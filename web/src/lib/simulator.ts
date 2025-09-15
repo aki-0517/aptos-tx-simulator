@@ -3,14 +3,11 @@ import { aptosClient } from './aptos-client';
 import { SimulationResult, SimulationError, GasEstimation, TransactionData } from '@/types';
 
 export class TransactionSimulator {
-  private aptos: Aptos;
-
-  constructor() {
-    this.aptos = aptosClient.getCurrentClient();
-  }
+  constructor() {}
 
   async simulateTransaction(transactionData: TransactionData): Promise<SimulationResult> {
     const startTime = performance.now();
+    const aptos = aptosClient.getCurrentClient();
     
     try {
       // Create the transaction based on type
@@ -24,7 +21,7 @@ export class TransactionSimulator {
           typeArguments: entryPayload.type_arguments || [],
         };
 
-        transaction = await this.aptos.transaction.build.simple({
+        transaction = await aptos.transaction.build.simple({
           sender: transactionData.sender,
           data: inputData,
           options: {
@@ -51,7 +48,7 @@ export class TransactionSimulator {
         // フォールバックはダミー鍵のまま
       }
 
-      const simulationResult = await this.aptos.transaction.simulate.simple({
+      const simulationResult = await aptos.transaction.simulate.simple({
         signerPublicKey,
         transaction,
       });
