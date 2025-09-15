@@ -24,38 +24,6 @@ export default function HomePage() {
           Simulate Aptos blockchain transactions before execution to preview<br />
           gas usage and detect potential errors in advance.
         </p>
-        
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <Card className="p-4">
-            <div className="flex flex-col items-center text-center">
-              <Activity className="h-8 w-8 text-primary mb-2" />
-              <h3 className="font-semibold">Real-time</h3>
-              <p className="text-sm text-muted-foreground">Get simulation results instantly</p>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex flex-col items-center text-center">
-              <Zap className="h-8 w-8 text-primary mb-2" />
-              <h3 className="font-semibold">Gas Optimization</h3>
-              <p className="text-sm text-muted-foreground">Calculate precise gas usage in advance</p>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex flex-col items-center text-center">
-              <Shield className="h-8 w-8 text-primary mb-2" />
-              <h3 className="font-semibold">Error Prevention</h3>
-              <p className="text-sm text-muted-foreground">Identify failure causes before execution</p>
-            </div>
-          </Card>
-          <Card className="p-4">
-            <div className="flex flex-col items-center text-center">
-              <Code className="h-8 w-8 text-primary mb-2" />
-              <h3 className="font-semibold">Development Support</h3>
-              <p className="text-sm text-muted-foreground">Streamline dApp development</p>
-            </div>
-          </Card>
-        </div>
       </div>
 
       {/* Main Content */}
@@ -123,49 +91,6 @@ export default function HomePage() {
             <SimulationResults />
           </ClientOnly>
         </div>
-      </div>
-
-      {/* Getting Started */}
-      <div className="mt-16">
-        <Card>
-          <CardHeader>
-            <CardTitle>How to Use</CardTitle>
-            <CardDescription>
-              Basic guide to using the Aptos Transaction Simulator
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
-                  1
-                </div>
-                <h3 className="font-semibold mb-2">Connect Wallet</h3>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Petra wallet to retrieve account information
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
-                  2
-                </div>
-                <h3 className="font-semibold mb-2">Build Transaction</h3>
-                <p className="text-sm text-muted-foreground">
-                  Enter the function and arguments to build your transaction
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
-                  3
-                </div>
-                <h3 className="font-semibold mb-2">Run Simulation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Execute simulation to check gas usage and results
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

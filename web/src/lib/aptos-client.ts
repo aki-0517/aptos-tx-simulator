@@ -26,7 +26,7 @@ export const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
 
 export class AptosClientManager {
   private clients: Map<string, Aptos> = new Map();
-  private currentNetwork: string = 'devnet';
+  private currentNetwork: string = 'testnet';
 
   constructor() {
     this.initializeClients();

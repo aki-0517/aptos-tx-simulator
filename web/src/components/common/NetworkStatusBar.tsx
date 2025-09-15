@@ -20,7 +20,7 @@ interface NetworkStatus {
 export function NetworkStatusBar() {
   const { getCurrentClient, getCurrentNetwork } = useAptosClient();
   const [status, setStatus] = useState<NetworkStatus>({
-    network: 'devnet',
+    network: 'testnet',
     connectionStatus: 'connecting',
     blockHeight: 0,
     gasPrice: 0,

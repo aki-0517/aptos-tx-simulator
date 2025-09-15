@@ -31,7 +31,7 @@ export const useWalletStore = create<WalletStore>()(
           isConnected: false,
           isConnecting: false,
         },
-        currentNetwork: 'devnet',
+        currentNetwork: 'testnet',
         
         // Actions
         connect: async () => {
@@ -54,7 +54,7 @@ export const useWalletStore = create<WalletStore>()(
 
               // Network normalize and switch client/network state
               const normalized = (network?.name || '').toLowerCase();
-              const targetNetwork = ['devnet', 'testnet', 'mainnet'].includes(normalized) ? normalized : 'devnet';
+              const targetNetwork = ['devnet', 'testnet', 'mainnet'].includes(normalized) ? normalized : 'testnet';
               try {
                 aptosClient.switchNetwork(targetNetwork);
                 set({ currentNetwork: targetNetwork });
