@@ -30,11 +30,54 @@ export interface FunctionCall {
 }
 
 export interface TransactionData {
-  type: 'entry_function' | 'script';
-  payload: TransactionPayloadEntryFunction | TransactionPayloadScript;
+  type: 'entry_function' | 'script' | 'batch' | 'sponsored';
+  payload: TransactionPayloadEntryFunction | TransactionPayloadScript | BatchTransactionData | SponsoredTransactionData;
   sender: string;
   maxGasAmount?: number;
   gasUnitPrice?: number;
+}
+
+export interface ScriptTransactionData {
+  type: 'script';
+  code: string; // Move bytecode (hex)
+  typeArgs: string[];
+  functionArgs: any[];
+}
+
+export interface BatchTransactionData {
+  type: 'batch';
+  transactions: TransactionData[];
+  executeSequentially: boolean;
+}
+
+export interface SponsoredTransactionData {
+  type: 'sponsored';
+  transaction: TransactionData;
+  sponsor: string;
+  sender: string;
+}
+
+export interface BatchSimulationResult {
+  results: SimulationResult[];
+  totalGasUsed: number;
+  totalCost: number;
+  dependencyGraph?: DependencyNode[];
+}
+
+export interface DependencyNode {
+  transactionIndex: number;
+  dependencies: number[];
+  stateChanges: string[];
+}
+
+export interface SponsoredSimulationResult {
+  normal: SimulationResult;
+  sponsored: SimulationResult;
+  gasSavings: number;
+  costComparison: {
+    senderCost: number;
+    sponsorCost: number;
+  };
 }
 
 export interface MoveFunction {
