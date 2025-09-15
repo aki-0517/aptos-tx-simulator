@@ -56,6 +56,11 @@ export class AptosClientManager {
       throw new Error(`Network ${network} not supported`);
     }
     this.currentNetwork = network;
+    // Optional: log for debugging current network
+    if (typeof window !== 'undefined') {
+      // eslint-disable-next-line no-console
+      console.log('[Aptos] Switched network to:', network);
+    }
   }
 
   getCurrentNetwork(): string {

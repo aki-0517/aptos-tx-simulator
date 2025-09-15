@@ -1,4 +1,4 @@
-import { Aptos, Account, AccountAddress, SimpleTransaction, InputEntryFunctionData, TransactionPayloadEntryFunction } from '@aptos-labs/ts-sdk';
+import { Aptos, Account, AccountAddress, SimpleTransaction, InputEntryFunctionData, TransactionPayloadEntryFunction, Ed25519PublicKey } from '@aptos-labs/ts-sdk';
 import { aptosClient } from './aptos-client';
 import { SimulationResult, SimulationError, GasEstimation, TransactionData } from '@/types';
 
@@ -37,8 +37,22 @@ export class TransactionSimulator {
       }
 
       // Simulate the transaction
+      // ウォレット接続時は公開鍵を優先使用し、認証鍵不一致(INVALID_AUTH_KEY)を回避
+      let signerPublicKey: any = Account.generate().publicKey;
+      try {
+        if (typeof window !== 'undefined' && (window as any).aptos) {
+          const acc = await (window as any).aptos.account();
+          if (acc?.publicKey) {
+            const hex = typeof acc.publicKey === 'string' ? acc.publicKey : String(acc.publicKey);
+            signerPublicKey = new Ed25519PublicKey(hex);
+          }
+        }
+      } catch {
+        // フォールバックはダミー鍵のまま
+      }
+
       const simulationResult = await this.aptos.transaction.simulate.simple({
-        signerPublicKey: Account.generate().publicKey,
+        signerPublicKey,
         transaction,
       });
 

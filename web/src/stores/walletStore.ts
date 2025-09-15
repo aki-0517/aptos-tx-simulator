@@ -51,15 +51,25 @@ export const useWalletStore = create<WalletStore>()(
             if (response) {
               const account = await window.aptos.account();
               const network = await window.aptos.network();
-              
-              // Get balance
+
+              // Network normalize and switch client/network state
+              const normalized = (network?.name || '').toLowerCase();
+              const targetNetwork = ['devnet', 'testnet', 'mainnet'].includes(normalized) ? normalized : 'devnet';
+              try {
+                aptosClient.switchNetwork(targetNetwork);
+                set({ currentNetwork: targetNetwork });
+              } catch (e) {
+                console.warn('Failed to switch Aptos client network:', e);
+              }
+
+              // Get balance on the correct network
               let balance = 0;
               try {
                 balance = await aptosClient.getAccountBalance(account.address);
               } catch (error) {
                 console.warn('Failed to fetch balance:', error);
               }
-              
+
               setConnection({
                 isConnected: true,
                 isConnecting: false,
@@ -69,7 +79,7 @@ export const useWalletStore = create<WalletStore>()(
                     address: account.address,
                     publicKey: account.publicKey,
                   },
-                  network: network.name,
+                  network: targetNetwork,
                   balance,
                 },
               });

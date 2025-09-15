@@ -54,11 +54,13 @@ export function useWallet() {
   const handleNetworkSwitch = useCallback(async (network: string) => {
     try {
       switchNetwork(network);
+      // After switching, proactively refresh balance with the new network
+      await updateBalance();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Network switch failed';
       setError(errorMessage);
     }
-  }, [switchNetwork, setError]);
+  }, [switchNetwork, updateBalance, setError]);
 
   const refreshBalance = useCallback(async () => {
     if (connection.isConnected) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,13 @@ export function TransactionBuilder() {
     updateTypeArguments 
   } = useSimulation();
   
-  const { isConnected, address } = useWallet();
+  const { isConnected, address, currentNetwork } = useWallet();
+
+  useEffect(() => {
+    if (currentNetwork) {
+      console.log('[Aptos] Current network:', currentNetwork);
+    }
+  }, [currentNetwork]);
   
   const [functionName, setFunctionName] = useState('');
   const [argumentsText, setArgumentsText] = useState('');
@@ -206,9 +212,35 @@ export function TransactionBuilder() {
               variant="outline"
               size="sm"
               onClick={() => {
-                handleFunctionChange('0x1::coin::transfer');
-                setArgumentsText('0x742d35cc6cd4ca8a9c2eb5e8e37f86c3, 1000000');
-                setTypeArgumentsText('0x1::aptos_coin::AptosCoin');
+                const func = '0x1::coin::transfer';
+                const typeText = '0x1::aptos_coin::AptosCoin';
+                // 送信者を優先: 入力済み -> 接続ウォレット
+                const currentSender = transactionData.sender || address || '';
+                if (!transactionData.sender && address) {
+                  updateTransactionField('sender', address);
+                }
+
+                // 受取先は自己アドレスにゼロパディングして成功率を上げる
+                const clean = currentSender.startsWith('0x') ? currentSender.slice(2) : currentSender;
+                const paddedRecipient = clean ? `0x${clean.padStart(64, '0')}` : '';
+                const amountOctas = '1000';
+                const argsText = paddedRecipient ? `${paddedRecipient}, ${amountOctas}` : '';
+
+                // UIのテキスト更新
+                setFunctionName(func);
+                setArgumentsText(argsText);
+                setTypeArgumentsText(typeText);
+
+                // ストアのpayloadを一括更新（競合回避）
+                const parsedArgs = argsText
+                  ? argsText.split(',').map(arg => arg.trim()).filter(Boolean)
+                  : [];
+                const functionArgs = parseTransactionArguments(parsedArgs);
+                updateTransactionField('payload', {
+                  function: func,
+                  function_arguments: functionArgs,
+                  type_arguments: [typeText],
+                } as any);
               }}
               className="text-xs"
             >
