@@ -5,21 +5,21 @@ export const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
   devnet: {
     name: 'Devnet',
     network: Network.DEVNET,
-    rpcUrl: 'https://fullnode.devnet.aptoslabs.com',
+    rpcUrl: 'https://fullnode.devnet.aptoslabs.com/v1',
     faucetUrl: 'https://faucet.devnet.aptoslabs.com',
     explorerUrl: 'https://explorer.aptoslabs.com/?network=devnet',
   },
   testnet: {
     name: 'Testnet', 
     network: Network.TESTNET,
-    rpcUrl: 'https://fullnode.testnet.aptoslabs.com',
+    rpcUrl: 'https://fullnode.testnet.aptoslabs.com/v1',
     faucetUrl: 'https://faucet.testnet.aptoslabs.com',
     explorerUrl: 'https://explorer.aptoslabs.com/?network=testnet',
   },
   mainnet: {
     name: 'Mainnet',
     network: Network.MAINNET,
-    rpcUrl: 'https://fullnode.mainnet.aptoslabs.com',
+    rpcUrl: 'https://fullnode.mainnet.aptoslabs.com/v1',
     explorerUrl: 'https://explorer.aptoslabs.com/?network=mainnet',
   },
 };
