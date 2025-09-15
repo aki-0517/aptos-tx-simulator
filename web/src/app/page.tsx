@@ -1,0 +1,172 @@
+'use client';
+
+import React from 'react';
+import { TransactionBuilder } from '@/components/simulation/TransactionBuilder';
+import { SimulationResults } from '@/components/simulation/SimulationResults';
+import { WalletConnection } from '@/components/common/WalletConnection';
+import { ClientOnly } from '@/components/common/ClientOnly';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { useSimulation } from '@/hooks/useSimulation';
+import { Activity, Zap, Shield, Code } from 'lucide-react';
+
+export default function HomePage() {
+  const { history, clearHistory } = useSimulation();
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Hero Section */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold mb-4">
+          Aptos Transaction Simulator
+        </h1>
+        <p className="text-xl text-muted-foreground mb-8">
+          Simulate Aptos blockchain transactions before execution to preview<br />
+          gas usage and detect potential errors in advance.
+        </p>
+        
+        {/* Features */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <Card className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <Activity className="h-8 w-8 text-primary mb-2" />
+              <h3 className="font-semibold">Real-time</h3>
+              <p className="text-sm text-muted-foreground">Get simulation results instantly</p>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <Zap className="h-8 w-8 text-primary mb-2" />
+              <h3 className="font-semibold">Gas Optimization</h3>
+              <p className="text-sm text-muted-foreground">Calculate precise gas usage in advance</p>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <Shield className="h-8 w-8 text-primary mb-2" />
+              <h3 className="font-semibold">Error Prevention</h3>
+              <p className="text-sm text-muted-foreground">Identify failure causes before execution</p>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex flex-col items-center text-center">
+              <Code className="h-8 w-8 text-primary mb-2" />
+              <h3 className="font-semibold">Development Support</h3>
+              <p className="text-sm text-muted-foreground">Streamline dApp development</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        {/* Left Sidebar - Wallet */}
+        <div className="xl:col-span-3 space-y-6">
+          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading wallet...</CardContent></Card>}>
+            <WalletConnection />
+          </ClientOnly>
+          
+          {/* Simulation History */}
+          {history.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">History</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearHistory}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <CardDescription>
+                  Recent simulation results
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {history.slice(0, 5).map((result, index) => (
+                    <div
+                      key={index}
+                      className="p-2 bg-muted/50 rounded text-sm"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`font-medium ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+                          {result.success ? 'Success' : 'Failed'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {result.gasUsed} gas
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {result.vmStatus}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Transaction Builder */}
+        <div className="xl:col-span-4">
+          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
+            <TransactionBuilder />
+          </ClientOnly>
+        </div>
+
+        {/* Simulation Results */}
+        <div className="xl:col-span-5">
+          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
+            <SimulationResults />
+          </ClientOnly>
+        </div>
+      </div>
+
+      {/* Getting Started */}
+      <div className="mt-16">
+        <Card>
+          <CardHeader>
+            <CardTitle>How to Use</CardTitle>
+            <CardDescription>
+              Basic guide to using the Aptos Transaction Simulator
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
+                  1
+                </div>
+                <h3 className="font-semibold mb-2">Connect Wallet</h3>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Petra wallet to retrieve account information
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
+                  2
+                </div>
+                <h3 className="font-semibold mb-2">Build Transaction</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter the function and arguments to build your transaction
+                </p>
+              </div>
+              <div className="text-center">
+                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center mx-auto mb-3">
+                  3
+                </div>
+                <h3 className="font-semibold mb-2">Run Simulation</h3>
+                <p className="text-sm text-muted-foreground">
+                  Execute simulation to check gas usage and results
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
