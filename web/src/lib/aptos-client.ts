@@ -79,38 +79,15 @@ export class AptosClientManager {
   async getAccountBalance(address: string): Promise<number> {
     const client = this.getCurrentClient();
     try {
-      // Check if account exists first
-      await client.getAccountInfo({
-        accountAddress: address,
-      });
-      
-      const resources = await client.getAccountResources({
-        accountAddress: address,
-      });
-      
-      const coinResource = resources.find(
-        (resource) => resource.type === '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>'
-      );
-      
-      if (coinResource && coinResource.data) {
-        const coinData = coinResource.data as any;
-        return parseInt(coinData.coin.value) / 100000000; // Convert from octas to APT
-      }
-      
-      return 0;
+      // Use Indexer-backed helper to get APT amount (returns octas)
+      const amountOctas = await client.getAccountAPTAmount({ accountAddress: address });
+      const apt = amountOctas / 1e8;
+      return Number.isFinite(apt) ? apt : 0;
     } catch (error: any) {
-      // Handle account not found errors silently
-      if (error?.status === 404 || error?.message?.includes('Account not found')) {
-        console.warn(`Account ${address} not found on ${this.currentNetwork}`);
-        return 0;
-      }
-      
-      // Handle JSON parsing errors
       if (error?.message?.includes('Unexpected end of JSON input')) {
         console.warn(`Failed to parse response for account ${address}`);
         return 0;
       }
-      
       console.error('Error fetching account balance:', error);
       return 0;
     }

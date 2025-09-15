@@ -569,6 +569,20 @@ const preSimulationChecks = async (transaction: any): Promise<PreCheckResult> =>
 };
 ```
 
+### 9.3 残高取得の実装上の注意（重要）
+
+Aptosの残高取得では、`0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>` をRESTで直接読む実装は404を返しやすく、未初期化アカウントやコインストア未登録ケースで誤って「残高0」と誤解する原因になります。公式SDKのIndexerベースAPIを使うと堅牢です。
+
+推奨: TypeScript SDKの`getAccountAPTAmount`を利用し、得られる値（octas）をAPTに変換します。
+
+```typescript
+// 1 APT = 1e8 octas
+const amountOctas = await aptos.getAccountAPTAmount({ accountAddress: address });
+const balanceAPT = amountOctas / 1e8;
+```
+
+本プロジェクトでは`web/src/lib/aptos-client.ts`の`getAccountBalance`を上記に置き換え、Testnetで3 APTあるのに0と表示される問題を解消しました。UI表示は従来通り`formatAPT`を使用します。
+
 ### 9.2 エラーメッセージの改善
 
 ```typescript
