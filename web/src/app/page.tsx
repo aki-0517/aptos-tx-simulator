@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulation } from '@/hooks/useSimulation';
-import { Activity, Zap, Shield, Code } from 'lucide-react';
+import { Activity, Zap, Shield, Code, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export default function HomePage() {
   const { history, clearHistory } = useSimulation();
@@ -22,10 +23,19 @@ export default function HomePage() {
         <h1 className="text-4xl font-bold mb-4">
           Aptos Transaction Simulator
         </h1>
-        <p className="text-xl text-muted-foreground mb-8">
+        <p className="text-xl text-muted-foreground mb-6">
           Simulate Aptos blockchain transactions before execution to preview<br />
           gas usage and detect potential errors in advance.
         </p>
+        <div className="flex justify-center gap-4">
+          <Link href="/advanced">
+            <Button variant="outline" size="lg">
+              <Shield className="h-4 w-4 mr-2" />
+              Advanced Features
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Main Content */}

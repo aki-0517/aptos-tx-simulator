@@ -61,44 +61,36 @@ export interface RiskAssessment {
   suggestions: string[];
 }
 
-export class StateForkManager {
-  private static instance: StateForkManager;
+class StateForkManager {
   private forks: Map<string, StateFork> = new Map();
   private scenarios: Map<string, WhatIfScenario> = new Map();
+  private readonly STORAGE_KEY = 'aptos-simulator-state-forks';
+  private readonly SCENARIOS_KEY = 'aptos-simulator-scenarios';
 
-  private constructor() {
+  constructor() {
     this.loadFromStorage();
-  }
-
-  static getInstance(): StateForkManager {
-    if (!StateForkManager.instance) {
-      StateForkManager.instance = new StateForkManager();
-    }
-    return StateForkManager.instance;
   }
 
   async createFork(
     name: string,
     description: string,
-    baseAddress?: string
+    baseBlockHeight?: number
   ): Promise<StateFork> {
-    const client = aptosClient.getCurrentClient();
-    const network = aptosClient.getCurrentNetwork();
+    const currentNetwork = aptosClient.getCurrentNetwork();
     
-    // Get current ledger info
-    const ledgerInfo = await client.getLedgerInfo();
-    const baseBlockHeight = parseInt(ledgerInfo.ledger_version);
-
+    // Get current block height if not provided
+    const blockHeight = baseBlockHeight || await this.getCurrentBlockHeight();
+    
     const fork: StateFork = {
       id: this.generateId(),
       name,
       description,
-      baseBlockHeight,
+      baseBlockHeight: blockHeight,
       createdAt: new Date(),
       modifications: [],
       metadata: {
-        network: network.name as any,
-        creator: baseAddress || 'anonymous',
+        network: currentNetwork as 'devnet' | 'testnet' | 'mainnet',
+        creator: 'user',
         tags: [],
       },
     };
@@ -112,15 +104,20 @@ export class StateForkManager {
   async cloneFork(forkId: string, newName: string): Promise<StateFork> {
     const originalFork = this.forks.get(forkId);
     if (!originalFork) {
-      throw new Error(`Fork ${forkId} not found`);
+      throw new Error(`Fork with ID ${forkId} not found`);
     }
 
     const clonedFork: StateFork = {
-      ...originalFork,
       id: this.generateId(),
       name: newName,
+      description: `Clone of ${originalFork.name}`,
+      baseBlockHeight: originalFork.baseBlockHeight,
       createdAt: new Date(),
-      modifications: [...originalFork.modifications], // Deep copy modifications
+      modifications: [...originalFork.modifications],
+      metadata: {
+        ...originalFork.metadata,
+        creator: 'user',
+      },
     };
 
     this.forks.set(clonedFork.id, clonedFork);
@@ -130,77 +127,154 @@ export class StateForkManager {
   }
 
   async deleteFork(forkId: string): Promise<void> {
-    this.forks.delete(forkId);
-    
-    // Also delete any scenarios using this fork
-    for (const [scenarioId, scenario] of this.scenarios.entries()) {
-      if (scenario.baseFork.id === forkId) {
-        this.scenarios.delete(scenarioId);
-      }
+    if (!this.forks.has(forkId)) {
+      throw new Error(`Fork with ID ${forkId} not found`);
     }
-    
+
+    this.forks.delete(forkId);
     this.saveToStorage();
   }
 
   async listForks(): Promise<StateFork[]> {
-    return Array.from(this.forks.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+    const currentNetwork = aptosClient.getCurrentNetwork();
+    return Array.from(this.forks.values())
+      .filter(fork => fork.metadata.network === currentNetwork)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  async getForkById(forkId: string): Promise<StateFork | null> {
-    return this.forks.get(forkId) || null;
-  }
-
-  async addModification(
-    forkId: string,
-    modification: Omit<StateModification, 'id' | 'timestamp'>
-  ): Promise<StateFork> {
+  async getForkById(forkId: string): Promise<StateFork> {
     const fork = this.forks.get(forkId);
     if (!fork) {
-      throw new Error(`Fork ${forkId} not found`);
+      throw new Error(`Fork with ID ${forkId} not found`);
+    }
+    return fork;
+  }
+
+  async addModification(forkId: string, modification: Omit<StateModification, 'id' | 'timestamp'>): Promise<StateFork> {
+    const fork = this.forks.get(forkId);
+    if (!fork) {
+      throw new Error(`Fork with ID ${forkId} not found`);
     }
 
-    const newModification: StateModification = {
+    const fullModification: StateModification = {
       ...modification,
       id: this.generateId(),
       timestamp: new Date(),
     };
 
-    fork.modifications.push(newModification);
+    fork.modifications.push(fullModification);
     this.forks.set(forkId, fork);
     this.saveToStorage();
     
     return fork;
   }
 
-  async removeModification(forkId: string, modificationId: string): Promise<StateFork> {
-    const fork = this.forks.get(forkId);
-    if (!fork) {
-      throw new Error(`Fork ${forkId} not found`);
+  // What-if scenario management
+  async createScenario(name: string, baseFork: StateFork): Promise<WhatIfScenario> {
+    const scenario: WhatIfScenario = {
+      id: this.generateId(),
+      name,
+      baseFork,
+      variants: [],
+    };
+
+    this.scenarios.set(scenario.id, scenario);
+    this.saveToStorage();
+    
+    return scenario;
+  }
+
+  async addScenarioVariant(
+    scenarioId: string, 
+    variantName: string,
+    modifications: StateModification[],
+    transactions: any[]
+  ): Promise<WhatIfScenario> {
+    const scenario = this.scenarios.get(scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario with ID ${scenarioId} not found`);
     }
 
-    fork.modifications = fork.modifications.filter(mod => mod.id !== modificationId);
-    this.forks.set(forkId, fork);
+    const variant: ScenarioVariant = {
+      id: this.generateId(),
+      name: variantName,
+      modifications,
+      transactions,
+    };
+
+    scenario.variants.push(variant);
+    this.scenarios.set(scenarioId, scenario);
     this.saveToStorage();
     
-    return fork;
+    return scenario;
   }
 
+  async compareScenarioOutcomes(scenarioId: string): Promise<ComparisonResult> {
+    const scenario = this.scenarios.get(scenarioId);
+    if (!scenario) {
+      throw new Error(`Scenario with ID ${scenarioId} not found`);
+    }
+
+    const gasUsageComparison = new Map<string, number>();
+    const outcomeComparison: OutcomeComparison[] = [];
+    
+    // Simulate each variant and collect results
+    for (const variant of scenario.variants) {
+      // This would integrate with the transaction simulator
+      // For now, we'll create mock comparison data
+      gasUsageComparison.set(variant.name, Math.floor(Math.random() * 10000));
+      
+      outcomeComparison.push({
+        variantId: variant.id,
+        success: Math.random() > 0.3,
+        gasUsed: Math.floor(Math.random() * 10000),
+        changes: variant.modifications,
+        events: [],
+      });
+    }
+
+    const riskAssessment: RiskAssessment = {
+      level: 'medium',
+      factors: ['State modification complexity', 'Transaction interdependencies'],
+      suggestions: ['Test on smaller amounts first', 'Verify account balances'],
+    };
+
+    const recommendations = [
+      'Variant with lowest gas usage appears most efficient',
+      'Consider testing edge cases with insufficient balances',
+      'Monitor for potential state conflicts between transactions',
+    ];
+
+    const result: ComparisonResult = {
+      gasUsageComparison,
+      outcomeComparison,
+      riskAssessment,
+      recommendations,
+    };
+
+    // Store result in scenario
+    scenario.comparisonResults = result;
+    this.scenarios.set(scenarioId, scenario);
+    this.saveToStorage();
+
+    return result;
+  }
+
+  // Helper methods for common modifications
   async createAccountWithBalance(
     forkId: string,
     address: string,
     balance: number
   ): Promise<StateFork> {
-    return await this.addModification(forkId, {
+    return this.addModification(forkId, {
       address,
       resourceType: '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>',
       action: 'create',
       afterValue: {
-        coin: {
-          value: balance.toString(),
-        },
+        coin: { value: balance.toString() },
+        deposit_events: { counter: '0', guid: { id: { addr: address, creation_num: '2' } } },
         frozen: false,
+        withdraw_events: { counter: '0', guid: { id: { addr: address, creation_num: '3' } } },
       },
     });
   }
@@ -210,211 +284,71 @@ export class StateForkManager {
     address: string,
     newBalance: number
   ): Promise<StateFork> {
-    // In a real implementation, we would fetch the current balance first
-    const beforeValue = { coin: { value: '0' }, frozen: false }; // Mock
+    // Get current balance for before value
+    let beforeValue;
+    try {
+      const currentBalance = await aptosClient.getAccountBalance(address);
+      beforeValue = { coin: { value: currentBalance.toString() } };
+    } catch (error) {
+      beforeValue = { coin: { value: '0' } };
+    }
 
-    return await this.addModification(forkId, {
+    return this.addModification(forkId, {
       address,
       resourceType: '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>',
       action: 'modify',
       beforeValue,
       afterValue: {
-        coin: {
-          value: newBalance.toString(),
-        },
+        coin: { value: newBalance.toString() },
+        deposit_events: { counter: '0', guid: { id: { addr: address, creation_num: '2' } } },
         frozen: false,
+        withdraw_events: { counter: '0', guid: { id: { addr: address, creation_num: '3' } } },
       },
     });
   }
 
-  async createScenario(
-    name: string,
-    baseForkId: string,
-    variants: Omit<ScenarioVariant, 'id'>[]
-  ): Promise<WhatIfScenario> {
-    const baseFork = this.forks.get(baseForkId);
-    if (!baseFork) {
-      throw new Error(`Base fork ${baseForkId} not found`);
+  async removeModification(forkId: string, modificationIndex: number): Promise<StateFork> {
+    const fork = this.forks.get(forkId);
+    if (!fork) {
+      throw new Error(`Fork with ID ${forkId} not found`);
     }
 
-    const scenario: WhatIfScenario = {
-      id: this.generateId(),
-      name,
-      baseFork,
-      variants: variants.map(variant => ({
-        ...variant,
-        id: this.generateId(),
-      })),
-    };
+    if (modificationIndex < 0 || modificationIndex >= fork.modifications.length) {
+      throw new Error(`Invalid modification index ${modificationIndex}`);
+    }
 
-    this.scenarios.set(scenario.id, scenario);
+    fork.modifications.splice(modificationIndex, 1);
+    this.forks.set(forkId, fork);
     this.saveToStorage();
     
-    return scenario;
-  }
-
-  async runScenarioComparison(scenarioId: string): Promise<ComparisonResult> {
-    const scenario = this.scenarios.get(scenarioId);
-    if (!scenario) {
-      throw new Error(`Scenario ${scenarioId} not found`);
-    }
-
-    const gasUsageComparison = new Map<string, number>();
-    const outcomeComparison: OutcomeComparison[] = [];
-
-    // Mock simulation results for each variant
-    for (const variant of scenario.variants) {
-      // In a real implementation, this would run actual simulations
-      const mockGasUsed = Math.floor(Math.random() * 2000) + 500;
-      const mockSuccess = Math.random() > 0.1; // 90% success rate
-
-      gasUsageComparison.set(variant.id, mockGasUsed);
-      outcomeComparison.push({
-        variantId: variant.id,
-        success: mockSuccess,
-        gasUsed: mockGasUsed,
-        changes: [], // Mock changes
-        events: [], // Mock events
-      });
-    }
-
-    // Risk assessment
-    const riskAssessment: RiskAssessment = this.assessRisk(scenario, outcomeComparison);
-
-    // Generate recommendations
-    const recommendations = this.generateRecommendations(outcomeComparison, gasUsageComparison);
-
-    const comparisonResult: ComparisonResult = {
-      gasUsageComparison,
-      outcomeComparison,
-      riskAssessment,
-      recommendations,
-    };
-
-    // Update scenario with results
-    scenario.comparisonResults = comparisonResult;
-    this.scenarios.set(scenarioId, scenario);
-    this.saveToStorage();
-
-    return comparisonResult;
-  }
-
-  async getScenarios(): Promise<WhatIfScenario[]> {
-    return Array.from(this.scenarios.values());
-  }
-
-  async deleteScenario(scenarioId: string): Promise<void> {
-    this.scenarios.delete(scenarioId);
-    this.saveToStorage();
-  }
-
-  private assessRisk(scenario: WhatIfScenario, outcomes: OutcomeComparison[]): RiskAssessment {
-    const factors: string[] = [];
-    let riskLevel: 'low' | 'medium' | 'high' = 'low';
-
-    // Check success rates
-    const successRate = outcomes.filter(o => o.success).length / outcomes.length;
-    if (successRate < 0.8) {
-      factors.push('Low success rate across variants');
-      riskLevel = 'high';
-    } else if (successRate < 0.95) {
-      factors.push('Some variants may fail');
-      riskLevel = 'medium';
-    }
-
-    // Check gas usage variance
-    const gasValues = outcomes.map(o => o.gasUsed);
-    const avgGas = gasValues.reduce((sum, val) => sum + val, 0) / gasValues.length;
-    const maxVariance = Math.max(...gasValues.map(val => Math.abs(val - avgGas)));
-    
-    if (maxVariance > avgGas * 0.5) {
-      factors.push('High gas usage variance between variants');
-      riskLevel = riskLevel === 'low' ? 'medium' : 'high';
-    }
-
-    // Check number of modifications
-    const totalModifications = scenario.variants.reduce(
-      (sum, variant) => sum + variant.modifications.length, 0
-    );
-    if (totalModifications > 10) {
-      factors.push('Large number of state modifications');
-      riskLevel = riskLevel === 'low' ? 'medium' : riskLevel;
-    }
-
-    const suggestions: string[] = [];
-    if (riskLevel === 'high') {
-      suggestions.push('Consider testing with smaller modifications first');
-      suggestions.push('Review failed variants for potential issues');
-    }
-    if (riskLevel === 'medium') {
-      suggestions.push('Monitor gas usage carefully');
-      suggestions.push('Have fallback strategies ready');
-    }
-
-    return {
-      level: riskLevel,
-      factors,
-      suggestions,
-    };
-  }
-
-  private generateRecommendations(
-    outcomes: OutcomeComparison[],
-    gasUsage: Map<string, number>
-  ): string[] {
-    const recommendations: string[] = [];
-
-    // Find best performing variant
-    const successfulOutcomes = outcomes.filter(o => o.success);
-    if (successfulOutcomes.length > 0) {
-      const bestVariant = successfulOutcomes.reduce((best, current) =>
-        current.gasUsed < best.gasUsed ? current : best
-      );
-      recommendations.push(`Variant ${bestVariant.variantId} shows best gas efficiency`);
-    }
-
-    // Check for failed variants
-    const failedOutcomes = outcomes.filter(o => !o.success);
-    if (failedOutcomes.length > 0) {
-      recommendations.push(`Review ${failedOutcomes.length} failed variants for issues`);
-    }
-
-    // Gas usage recommendations
-    const gasValues = Array.from(gasUsage.values());
-    const avgGas = gasValues.reduce((sum, val) => sum + val, 0) / gasValues.length;
-    if (avgGas > 1500) {
-      recommendations.push('Consider optimizing for lower gas usage');
-    }
-
-    return recommendations;
+    return fork;
   }
 
   private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private saveToStorage(): void {
+  private async getCurrentBlockHeight(): Promise<number> {
     try {
-      const data = {
-        forks: Array.from(this.forks.entries()),
-        scenarios: Array.from(this.scenarios.entries()),
-      };
-      localStorage.setItem('aptos-simulator-forks', JSON.stringify(data));
+      const ledgerInfo = await aptosClient.getCurrentClient().getLedgerInfo();
+      return parseInt(ledgerInfo.block_height);
     } catch (error) {
-      console.error('Failed to save forks to storage:', error);
+      console.warn('Failed to get current block height, using 0');
+      return 0;
     }
   }
 
   private loadFromStorage(): void {
+    if (typeof window === 'undefined') return;
+    
     try {
-      const stored = localStorage.getItem('aptos-simulator-forks');
-      if (stored) {
-        const data = JSON.parse(stored);
-        
-        // Restore forks
-        if (data.forks) {
-          this.forks = new Map(data.forks.map(([id, fork]: [string, any]) => [
-            id,
+      // Load forks
+      const storedForks = localStorage.getItem(this.STORAGE_KEY);
+      if (storedForks) {
+        const data = JSON.parse(storedForks);
+        this.forks = new Map(
+          data.map((fork: any) => [
+            fork.id, 
             {
               ...fork,
               createdAt: new Date(fork.createdAt),
@@ -422,25 +356,37 @@ export class StateForkManager {
                 ...mod,
                 timestamp: new Date(mod.timestamp),
               })),
-            },
-          ]));
-        }
-        
-        // Restore scenarios
-        if (data.scenarios) {
-          this.scenarios = new Map(data.scenarios);
-        }
+            }
+          ])
+        );
+      }
+
+      // Load scenarios
+      const storedScenarios = localStorage.getItem(this.SCENARIOS_KEY);
+      if (storedScenarios) {
+        const data = JSON.parse(storedScenarios);
+        this.scenarios = new Map(
+          data.map((scenario: any) => [scenario.id, scenario])
+        );
       }
     } catch (error) {
-      console.error('Failed to load forks from storage:', error);
+      console.error('Failed to load from storage:', error);
     }
   }
 
-  // Cleanup method
-  destroy(): void {
-    this.forks.clear();
-    this.scenarios.clear();
+  private saveToStorage(): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const forksData = Array.from(this.forks.values());
+      const scenariosData = Array.from(this.scenarios.values());
+      
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(forksData));
+      localStorage.setItem(this.SCENARIOS_KEY, JSON.stringify(scenariosData));
+    } catch (error) {
+      console.error('Failed to save to storage:', error);
+    }
   }
 }
 
-export const stateForkManager = StateForkManager.getInstance();
+export const stateForkManager = new StateForkManager();

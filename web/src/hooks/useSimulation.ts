@@ -85,6 +85,10 @@ export function useSimulation() {
     clearHistory();
   }, [clearHistory]);
 
+  const getLatestResult = useCallback(() => {
+    return history.length > 0 ? history[0] : result;
+  }, [history, result]);
+
   // Auto-validation when transaction data changes
   useEffect(() => {
     if (transactionData.sender && transactionData.payload) {
@@ -114,6 +118,7 @@ export function useSimulation() {
     estimateGas,
     reset,
     clearHistory: clearSimulationHistory,
+    getLatestResult,
     
     // Data updates
     setTransactionData,

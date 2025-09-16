@@ -51,8 +51,10 @@ export interface ModuleLoad {
 export interface ResourceAccess {
   address: string;
   resourceType: string;
-  operation: 'read' | 'write' | 'create' | 'delete';
+  accessType: 'read' | 'write' | 'create' | 'delete';
   gasUsed: number;
+  beforeValue?: any;
+  afterValue?: any;
 }
 
 export interface DetailedGasBreakdown {

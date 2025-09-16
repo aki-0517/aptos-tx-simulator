@@ -18,7 +18,7 @@ interface NetworkStatus {
 }
 
 export function NetworkStatusBar() {
-  const { getCurrentClient, getCurrentNetwork } = useAptosClient();
+  const { client, currentNetwork } = useAptosClient();
   const [status, setStatus] = useState<NetworkStatus>({
     network: 'testnet',
     connectionStatus: 'connecting',
@@ -36,8 +36,6 @@ export function NetworkStatusBar() {
       const startTime = performance.now();
       
       try {
-        const client = getCurrentClient();
-        const network = getCurrentNetwork();
         
         setStatus(prev => ({ ...prev, connectionStatus: 'connecting' }));
         
@@ -64,7 +62,7 @@ export function NetworkStatusBar() {
           responseTime < 3000 ? 'medium' : 'high';
 
         setStatus({
-          network: network.name as 'devnet' | 'testnet' | 'mainnet',
+          network: currentNetwork as 'devnet' | 'testnet' | 'mainnet',
           connectionStatus: 'connected',
           blockHeight: parseInt(ledgerInfo.ledger_version),
           gasPrice,
@@ -89,7 +87,7 @@ export function NetworkStatusBar() {
     const interval = setInterval(updateNetworkStatus, 30000);
     
     return () => clearInterval(interval);
-  }, [getCurrentClient, getCurrentNetwork]);
+  }, [client, currentNetwork]);
 
   const getStatusColor = () => {
     switch (status.connectionStatus) {

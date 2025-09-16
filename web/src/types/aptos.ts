@@ -37,6 +37,102 @@ export interface TransactionData {
   gasUnitPrice?: number;
 }
 
+// Advanced Transaction Types
+export interface ScriptTransactionData {
+  type: 'script';
+  sender: string;
+  code: string; // Move bytecode
+  typeArgs?: string[];
+  functionArgs?: any[];
+  maxGasAmount?: number;
+  gasUnitPrice?: number;
+}
+
+export interface BatchTransactionData {
+  type: 'batch';
+  transactions: TransactionData[];
+  executeSequentially: boolean;
+  maxGasAmount?: number;
+  gasUnitPrice?: number;
+}
+
+export interface SponsoredTransactionData {
+  type: 'sponsored';
+  transaction: TransactionData;
+  sponsorAddress: string;
+  maxGasAmount?: number;
+  gasUnitPrice?: number;
+}
+
+export interface MultiSigTransactionData {
+  type: 'multisig';
+  multiSigAddress: string;
+  payload: TransactionPayloadEntryFunction;
+  requiredSignatures: number;
+  availableSigners: string[];
+  maxGasAmount?: number;
+  gasUnitPrice?: number;
+}
+
+// Enhanced simulation result for advanced features
+export interface BatchSimulationResult extends SimulationResult {
+  individualResults: SimulationResult[];
+  dependencies: TransactionDependency[];
+  parallelExecutionSavings?: number;
+}
+
+export interface SponsoredSimulationResult extends SimulationResult {
+  sponsorCost: number;
+  senderSavings: number;
+  sponsorBalance: number;
+  costComparison: {
+    withSponsorship: number;
+    withoutSponsorship: number;
+  };
+}
+
+export interface MultiSigSimulationResult extends SimulationResult {
+  signaturesRequired: number;
+  signaturesProvided: number;
+  signers: {
+    address: string;
+    signed: boolean;
+    publicKey?: string;
+  }[];
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+}
+
+export interface TransactionDependency {
+  fromTransaction: number;
+  toTransaction: number;
+  dependencyType: 'state' | 'resource' | 'account';
+  conflictRisk: 'low' | 'medium' | 'high';
+}
+
+// State Fork Types
+export interface StateFork {
+  id: string;
+  name: string;
+  description: string;
+  baseBlockHeight: number;
+  createdAt: Date;
+  modifications: StateModification[];
+  metadata: {
+    network: 'devnet' | 'testnet' | 'mainnet';
+    creator: string;
+    tags: string[];
+  };
+}
+
+export interface StateModification {
+  address: string;
+  resourceType: string;
+  action: 'create' | 'modify' | 'delete';
+  beforeValue?: any;
+  afterValue?: any;
+  timestamp: Date;
+}
+
 export interface ScriptTransactionData {
   type: 'script';
   code: string; // Move bytecode (hex)

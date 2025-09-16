@@ -35,325 +35,429 @@ export interface BatchOptimizationSuggestion {
   reorderedTransactions?: TransactionData[];
 }
 
-export class GasOptimizer {
-  private static instance: GasOptimizer;
+class GasOptimizer {
+  private readonly NETWORK_GAS_PRICES = {
+    devnet: { fast: 150, standard: 100, slow: 50 },
+    testnet: { fast: 120, standard: 80, slow: 40 },
+    mainnet: { fast: 200, standard: 150, slow: 100 },
+  };
 
-  private constructor() {}
-
-  static getInstance(): GasOptimizer {
-    if (!GasOptimizer.instance) {
-      GasOptimizer.instance = new GasOptimizer();
-    }
-    return GasOptimizer.instance;
-  }
-
-  async analyzeTransaction(transaction: TransactionData): Promise<GasOptimizationSuggestion> {
-    const networkState = await networkMonitor.getCurrentNetworkState();
+  async optimizeTransaction(transactionData: any): Promise<GasOptimizationSuggestion> {
+    const analysis = await this.analyzeTransaction(transactionData);
     
-    // Get current transaction settings
-    const currentGasPrice = transaction.gasUnitPrice || networkState.currentGasPrice;
-    const currentMaxGas = transaction.maxGasAmount || 10000;
-
-    // Simulate transaction to get actual gas usage
-    let actualGasUsed = currentMaxGas;
-    try {
-      const simulationResult = await transactionSimulator.simulateTransaction(transaction);
-      if (simulationResult.success) {
-        actualGasUsed = simulationResult.gasUsed;
-      }
-    } catch {
-      // Use fallback estimation
-      actualGasUsed = Math.floor(currentMaxGas * 0.7);
-    }
-
-    // Calculate optimal settings
-    const optimizedGasPrice = await this.calculateOptimalGasPrice(networkState, 'standard');
-    const optimizedMaxGas = Math.ceil(actualGasUsed * 1.2); // 20% buffer
-
-    // Calculate savings
-    const currentCost = currentGasPrice * actualGasUsed;
-    const optimizedCost = optimizedGasPrice * actualGasUsed;
-    const savings = currentCost - optimizedCost;
-
-    // Generate rationale
-    const rationale = this.generateOptimizationRationale(
-      networkState,
-      currentGasPrice,
-      optimizedGasPrice,
-      currentMaxGas,
-      optimizedMaxGas
-    );
-
-    // Calculate confidence based on network state and historical data
-    const confidence = this.calculateConfidence(networkState, actualGasUsed);
-
-    // Generate alternative options
-    const alternativeOptions = await this.generateAlternativeOptions(
-      networkState,
-      actualGasUsed,
-      optimizedGasPrice
-    );
-
     return {
-      currentSettings: {
-        gasPrice: currentGasPrice,
-        maxGas: currentMaxGas,
-      },
-      optimizedSettings: {
-        gasPrice: optimizedGasPrice,
-        maxGas: optimizedMaxGas,
-        estimatedSavings: Math.max(0, savings),
-        confirmationTime: this.estimateConfirmationTime(networkState, optimizedGasPrice),
-      },
-      rationale,
-      confidence,
-      alternativeOptions,
+      currentGasEstimate: analysis.estimatedGas,
+      optimizedGasAmount: this.calculateOptimalGas(analysis),
+      potentialSavings: this.calculateSavings(analysis),
+      optimizationStrategies: await this.generateOptimizationStrategies(analysis),
+      alternativeApproaches: await this.suggestAlternatives(transactionData),
+      priceRecommendations: this.getPriceRecommendations(),
+      riskAssessment: this.assessOptimizationRisk(analysis),
     };
   }
 
-  async suggestBatchOptimization(transactions: TransactionData[]): Promise<BatchOptimizationSuggestion> {
-    const networkState = await networkMonitor.getCurrentNetworkState();
+  async optimizeBatch(transactions: any[]): Promise<BatchOptimizationSuggestion> {
+    const batchAnalysis = await this.analyzeBatch(transactions);
     
-    let originalGasCost = 0;
-    const simulationResults: SimulationResult[] = [];
-
-    // Simulate each transaction to get gas usage
-    for (const tx of transactions) {
-      try {
-        const result = await transactionSimulator.simulateTransaction(tx);
-        simulationResults.push(result);
-        const gasPrice = tx.gasUnitPrice || networkState.currentGasPrice;
-        originalGasCost += result.gasUsed * gasPrice;
-      } catch {
-        // Use fallback estimation
-        const gasPrice = tx.gasUnitPrice || networkState.currentGasPrice;
-        originalGasCost += 1000 * gasPrice;
-      }
-    }
-
-    // Analyze batch optimization opportunities
-    const recommendations: string[] = [];
-    let optimizedGasCost = originalGasCost;
-    let reorderedTransactions: TransactionData[] | undefined;
-
-    // 1. Uniform gas price optimization
-    const optimalGasPrice = await this.calculateOptimalGasPrice(networkState, 'standard');
-    const totalGasUsed = simulationResults.reduce((sum, result) => sum + result.gasUsed, 0);
-    const uniformCost = totalGasUsed * optimalGasPrice;
-    
-    if (uniformCost < optimizedGasCost) {
-      optimizedGasCost = uniformCost;
-      recommendations.push(`Use uniform gas price of ${optimalGasPrice} octas for all transactions`);
-    }
-
-    // 2. Transaction reordering for dependency optimization
-    if (transactions.length > 1) {
-      const dependencyAnalysis = this.analyzeTransactionDependencies(transactions);
-      if (dependencyAnalysis.canOptimize) {
-        reorderedTransactions = dependencyAnalysis.optimizedOrder;
-        recommendations.push('Reorder transactions to optimize state access patterns');
-        optimizedGasCost *= 0.95; // Assume 5% savings from reordering
-      }
-    }
-
-    // 3. Max gas amount optimization
-    const totalMaxGas = transactions.reduce((sum, tx) => sum + (tx.maxGasAmount || 10000), 0);
-    const actualTotalGas = Math.ceil(totalGasUsed * 1.15); // 15% buffer for batch
-    if (actualTotalGas < totalMaxGas) {
-      recommendations.push(`Reduce total max gas from ${totalMaxGas} to ${actualTotalGas}`);
-    }
-
-    // 4. Timing optimization
-    if (networkState.networkCongestion === 'high') {
-      recommendations.push('Consider delaying non-urgent transactions until network congestion decreases');
-      recommendations.push('Prioritize only critical transactions during high congestion periods');
-    }
-
-    const savings = originalGasCost - optimizedGasCost;
-
     return {
-      originalGasCost,
-      optimizedGasCost,
-      savings: Math.max(0, savings),
-      recommendations,
-      reorderedTransactions,
+      originalGasEstimate: batchAnalysis.totalGas,
+      optimizedSequence: await this.optimizeExecutionOrder(transactions),
+      parallelizationOpportunities: this.identifyParallelizable(transactions),
+      consolidationSuggestions: await this.suggestConsolidation(transactions),
+      gasReduction: batchAnalysis.potentialSavings,
+      executionTimeImprovement: batchAnalysis.timeImprovement,
     };
   }
 
-  private async calculateOptimalGasPrice(
-    networkState: NetworkState, 
-    priority: 'fast' | 'standard' | 'slow'
-  ): Promise<number> {
-    return await networkMonitor.predictOptimalGasPrice(priority);
+  private async analyzeTransaction(transactionData: any) {
+    const functionComplexity = this.assessFunctionComplexity(transactionData);
+    const argumentComplexity = this.assessArgumentComplexity(transactionData);
+    const stateAccess = await this.predictStateAccess(transactionData);
+    
+    return {
+      estimatedGas: functionComplexity.gas + argumentComplexity.gas + stateAccess.gas,
+      complexityFactors: {
+        function: functionComplexity,
+        arguments: argumentComplexity,
+        stateAccess,
+      },
+      optimizationOpportunities: this.identifyOptimizations(functionComplexity, argumentComplexity, stateAccess),
+    };
   }
 
-  private generateOptimizationRationale(
-    networkState: NetworkState,
-    currentGasPrice: number,
-    optimizedGasPrice: number,
-    currentMaxGas: number,
-    optimizedMaxGas: number
-  ): string {
-    const rationales: string[] = [];
+  private assessFunctionComplexity(transactionData: any) {
+    const func = transactionData.payload?.function || '';
+    let gasEstimate = 1000; // Base gas
+    let complexity = 'low';
 
-    // Gas price analysis
-    if (optimizedGasPrice < currentGasPrice) {
-      const savings = ((currentGasPrice - optimizedGasPrice) / currentGasPrice * 100).toFixed(1);
-      rationales.push(`Reduced gas price by ${savings}% based on current network conditions (${networkState.networkCongestion} congestion)`);
-    } else if (optimizedGasPrice > currentGasPrice) {
-      const increase = ((optimizedGasPrice - currentGasPrice) / currentGasPrice * 100).toFixed(1);
-      rationales.push(`Increased gas price by ${increase}% to ensure faster confirmation during ${networkState.networkCongestion} congestion`);
+    // Analyze function complexity based on patterns
+    if (func.includes('transfer')) {
+      gasEstimate += 500;
+      complexity = 'low';
+    } else if (func.includes('swap') || func.includes('exchange')) {
+      gasEstimate += 2000;
+      complexity = 'medium';
+    } else if (func.includes('liquidity') || func.includes('stake')) {
+      gasEstimate += 3000;
+      complexity = 'high';
     }
 
-    // Max gas analysis
-    if (optimizedMaxGas < currentMaxGas) {
-      const reduction = ((currentMaxGas - optimizedMaxGas) / currentMaxGas * 100).toFixed(1);
-      rationales.push(`Reduced max gas limit by ${reduction}% based on estimated actual usage`);
+    return {
+      gas: gasEstimate,
+      complexity,
+      factors: [`Function type: ${func}`],
+    };
+  }
+
+  private assessArgumentComplexity(transactionData: any) {
+    const args = transactionData.payload?.function_arguments || [];
+    const typeArgs = transactionData.payload?.type_arguments || [];
+    
+    let gasEstimate = args.length * 50 + typeArgs.length * 100;
+    let complexity = args.length > 5 ? 'high' : args.length > 2 ? 'medium' : 'low';
+
+    return {
+      gas: gasEstimate,
+      complexity,
+      factors: [`${args.length} arguments`, `${typeArgs.length} type arguments`],
+    };
+  }
+
+  private async predictStateAccess(transactionData: any) {
+    // Predict state access patterns based on function type
+    const func = transactionData.payload?.function || '';
+    let gasEstimate = 200; // Base state access
+    let accessCount = 1;
+
+    if (func.includes('transfer')) {
+      gasEstimate += 400; // Read sender balance, write sender/receiver
+      accessCount = 3;
+    } else if (func.includes('swap')) {
+      gasEstimate += 800; // Multiple pool state accesses
+      accessCount = 5;
     }
 
-    // Network-specific advice
-    switch (networkState.networkCongestion) {
-      case 'low':
-        rationales.push('Low network congestion allows for lower gas prices without significant delay');
-        break;
-      case 'medium':
-        rationales.push('Moderate congestion - balanced approach between cost and speed');
-        break;
+    return {
+      gas: gasEstimate,
+      accessCount,
+      factors: [`Predicted ${accessCount} state accesses`],
+    };
+  }
+
+  private identifyOptimizations(functionComplexity: any, argumentComplexity: any, stateAccess: any) {
+    const optimizations = [];
+
+    if (argumentComplexity.complexity === 'high') {
+      optimizations.push({
+        type: 'argument_reduction',
+        description: 'Consider reducing the number of arguments by batching operations',
+        potentialSavings: argumentComplexity.gas * 0.3,
+      });
+    }
+
+    if (stateAccess.accessCount > 3) {
+      optimizations.push({
+        type: 'state_batching',
+        description: 'Multiple state accesses detected - consider batching reads/writes',
+        potentialSavings: stateAccess.gas * 0.2,
+      });
+    }
+
+    if (functionComplexity.complexity === 'high') {
+      optimizations.push({
+        type: 'function_splitting',
+        description: 'Complex function - consider splitting into smaller operations',
+        potentialSavings: functionComplexity.gas * 0.15,
+      });
+    }
+
+    return optimizations;
+  }
+
+  private calculateOptimalGas(analysis: any): number {
+    let optimal = analysis.estimatedGas;
+    
+    // Apply optimization savings
+    for (const opt of analysis.optimizationOpportunities) {
+      optimal -= opt.potentialSavings;
+    }
+
+    // Add safety buffer (10%)
+    return Math.ceil(optimal * 1.1);
+  }
+
+  private calculateSavings(analysis: any): number {
+    return analysis.optimizationOpportunities.reduce(
+      (total: number, opt: any) => total + opt.potentialSavings, 
+      0
+    );
+  }
+
+  private async generateOptimizationStrategies(analysis: any) {
+    return [
+      {
+        strategy: 'gas_price_timing',
+        description: 'Execute during low network congestion periods',
+        impact: 'medium',
+        implementation: 'Monitor network gas prices and delay non-urgent transactions',
+      },
+      {
+        strategy: 'argument_optimization',
+        description: 'Optimize function arguments for minimal gas usage',
+        impact: 'low',
+        implementation: 'Use more efficient data structures in function calls',
+      },
+      {
+        strategy: 'batch_operations',
+        description: 'Combine multiple operations into single transaction',
+        impact: 'high',
+        implementation: 'Use batch transaction functionality where possible',
+      },
+    ];
+  }
+
+  private async suggestAlternatives(transactionData: any): Promise<AlternativeOption[]> {
+    const alternatives: AlternativeOption[] = [];
+    const func = transactionData.payload?.function || '';
+
+    if (func.includes('transfer')) {
+      alternatives.push({
+        approach: 'sponsored_transaction',
+        description: 'Use sponsored transaction to have fee payer cover gas costs',
+        gasImpact: -100, // Negative because sender saves gas
+        implementation: 'Configure fee payer for this transaction',
+      });
+    }
+
+    if (func.includes('swap') || func.includes('liquidity')) {
+      alternatives.push({
+        approach: 'batch_with_others',
+        description: 'Combine with other DeFi operations for efficiency',
+        gasImpact: -500,
+        implementation: 'Queue transaction for batching with similar operations',
+      });
+    }
+
+    alternatives.push({
+      approach: 'delayed_execution',
+      description: 'Wait for lower network congestion',
+      gasImpact: -200,
+      implementation: 'Schedule transaction for off-peak hours',
+    });
+
+    return alternatives;
+  }
+
+  private getPriceRecommendations() {
+    // This would integrate with real-time network data
+    return {
+      immediate: { price: 150, confidence: 'high', waitTime: '< 1 min' },
+      fast: { price: 120, confidence: 'high', waitTime: '1-3 min' },
+      standard: { price: 100, confidence: 'medium', waitTime: '3-5 min' },
+      slow: { price: 80, confidence: 'low', waitTime: '5-10 min' },
+    };
+  }
+
+  private assessOptimizationRisk(analysis: any) {
+    let riskLevel = 'low';
+    const riskFactors = [];
+
+    if (analysis.complexityFactors.function.complexity === 'high') {
+      riskLevel = 'medium';
+      riskFactors.push('Complex function execution');
+    }
+
+    if (analysis.complexityFactors.stateAccess.accessCount > 5) {
+      riskLevel = 'high';
+      riskFactors.push('Multiple state modifications');
+    }
+
+    return {
+      level: riskLevel,
+      factors: riskFactors,
+      recommendations: this.getRiskRecommendations(riskLevel),
+    };
+  }
+
+  private getRiskRecommendations(riskLevel: string): string[] {
+    switch (riskLevel) {
       case 'high':
-        rationales.push('High congestion requires higher gas prices for timely confirmation');
-        break;
+        return [
+          'Test with small amounts first',
+          'Monitor transaction closely',
+          'Have fallback strategy ready',
+        ];
+      case 'medium':
+        return [
+          'Verify all parameters carefully',
+          'Consider staging the operation',
+        ];
+      default:
+        return [
+          'Standard precautions apply',
+        ];
     }
-
-    return rationales.join('. ');
   }
 
-  private calculateConfidence(networkState: NetworkState, actualGasUsed: number): number {
-    let confidence = 70; // Base confidence
-
-    // Adjust based on network stability
-    if (networkState.networkCongestion === 'low') {
-      confidence += 15;
-    } else if (networkState.networkCongestion === 'high') {
-      confidence -= 10;
-    }
-
-    // Adjust based on gas usage predictability
-    if (actualGasUsed < 1000) {
-      confidence += 10; // Simple transactions are more predictable
-    } else if (actualGasUsed > 5000) {
-      confidence -= 5; // Complex transactions are less predictable
-    }
-
-    // Adjust based on historical data availability
-    const historicalTrends = networkMonitor.getHistoricalGasTrends(2);
-    if (historicalTrends.length > 0) {
-      confidence += 10;
-    }
-
-    return Math.min(95, Math.max(30, confidence));
-  }
-
-  private async generateAlternativeOptions(
-    networkState: NetworkState,
-    actualGasUsed: number,
-    standardGasPrice: number
-  ): Promise<AlternativeOption[]> {
-    const options: AlternativeOption[] = [];
-
-    // Economy option
-    const slowGasPrice = await networkMonitor.predictOptimalGasPrice('slow');
-    options.push({
-      label: 'Economy',
-      gasPrice: slowGasPrice,
-      maxGas: Math.ceil(actualGasUsed * 1.2),
-      estimatedTime: this.estimateConfirmationTime(networkState, slowGasPrice),
-      savings: (standardGasPrice - slowGasPrice) * actualGasUsed,
-      description: 'Lower cost, slower confirmation',
-    });
-
-    // Fast option
-    const fastGasPrice = await networkMonitor.predictOptimalGasPrice('fast');
-    options.push({
-      label: 'Fast',
-      gasPrice: fastGasPrice,
-      maxGas: Math.ceil(actualGasUsed * 1.15),
-      estimatedTime: this.estimateConfirmationTime(networkState, fastGasPrice),
-      savings: (standardGasPrice - fastGasPrice) * actualGasUsed,
-      description: 'Higher cost, faster confirmation',
-    });
-
-    // Conservative option (higher max gas, same price)
-    options.push({
-      label: 'Conservative',
-      gasPrice: standardGasPrice,
-      maxGas: Math.ceil(actualGasUsed * 1.5),
-      estimatedTime: this.estimateConfirmationTime(networkState, standardGasPrice),
-      savings: 0,
-      description: 'Same cost, higher success guarantee',
-    });
-
-    return options.filter(option => option.gasPrice !== standardGasPrice);
-  }
-
-  private estimateConfirmationTime(networkState: NetworkState, gasPrice: number): number {
-    const baseTime = networkState.averageBlockTime;
-    const congestionMultiplier = {
-      low: 1.0,
-      medium: 1.5,
-      high: 2.5,
-    }[networkState.networkCongestion];
-
-    // Gas price affects confirmation time
-    const gasPriceRatio = gasPrice / networkState.currentGasPrice;
-    const gasPriceMultiplier = Math.max(0.5, Math.min(2.0, 2 - gasPriceRatio));
-
-    return Math.ceil(baseTime * congestionMultiplier * gasPriceMultiplier);
-  }
-
-  private analyzeTransactionDependencies(transactions: TransactionData[]): {
-    canOptimize: boolean;
-    optimizedOrder: TransactionData[];
-  } {
-    // Simple heuristic: prioritize read-heavy transactions before write-heavy ones
-    // In a real implementation, this would analyze actual dependencies
+  // Batch optimization methods
+  private async analyzeBatch(transactions: any[]) {
+    let totalGas = 0;
+    let potentialSavings = 0;
     
-    const scored = transactions.map((tx, index) => ({
-      tx,
-      originalIndex: index,
-      // Mock scoring based on function name complexity
-      writeScore: this.estimateWriteComplexity(tx),
-    }));
+    for (const tx of transactions) {
+      const analysis = await this.analyzeTransaction(tx);
+      totalGas += analysis.estimatedGas;
+      potentialSavings += this.calculateSavings(analysis);
+    }
 
-    // Sort by write complexity (reads first, then writes)
-    scored.sort((a, b) => a.writeScore - b.writeScore);
-
-    const canOptimize = scored.some((item, index) => item.originalIndex !== index);
+    // Additional savings from batching
+    const batchingSavings = transactions.length * 100; // Fixed overhead per transaction
+    potentialSavings += batchingSavings;
 
     return {
-      canOptimize,
-      optimizedOrder: scored.map(item => item.tx),
+      totalGas,
+      potentialSavings,
+      timeImprovement: this.estimateTimeImprovement(transactions),
     };
   }
 
-  private estimateWriteComplexity(transaction: TransactionData): number {
-    // Simple heuristic based on transaction type and payload
-    if (transaction.type === 'script') {
-      return 10; // Scripts tend to be more complex
-    }
+  private async optimizeExecutionOrder(transactions: any[]) {
+    // Simple optimization: order by gas usage (ascending)
+    const analyzed = await Promise.all(
+      transactions.map(async (tx, index) => ({
+        tx,
+        originalIndex: index,
+        analysis: await this.analyzeTransaction(tx),
+      }))
+    );
 
-    const payload = transaction.payload as any;
-    if (payload?.function) {
-      const func = payload.function.toLowerCase();
-      if (func.includes('transfer') || func.includes('mint') || func.includes('burn')) {
-        return 8; // State-changing operations
-      }
-      if (func.includes('get') || func.includes('view') || func.includes('check')) {
-        return 2; // Read operations
-      }
-    }
-
-    return 5; // Default complexity
+    return analyzed
+      .sort((a, b) => a.analysis.estimatedGas - b.analysis.estimatedGas)
+      .map(item => ({
+        transaction: item.tx,
+        originalIndex: item.originalIndex,
+        optimizedPosition: analyzed.indexOf(item),
+        reasoning: `Optimized for gas efficiency (${item.analysis.estimatedGas} gas)`,
+      }));
   }
+
+  private identifyParallelizable(transactions: any[]) {
+    const parallelizable = [];
+    
+    // Simple heuristic: transactions with different senders can be parallelized
+    const senderGroups = new Map();
+    transactions.forEach((tx, index) => {
+      const sender = tx.sender;
+      if (!senderGroups.has(sender)) {
+        senderGroups.set(sender, []);
+      }
+      senderGroups.get(sender).push({ tx, index });
+    });
+
+    if (senderGroups.size > 1) {
+      parallelizable.push({
+        type: 'different_senders',
+        transactions: Array.from(senderGroups.values()).filter(group => group.length === 1).flat(),
+        estimatedSpeedup: Math.min(2.0, senderGroups.size * 0.5),
+      });
+    }
+
+    return parallelizable;
+  }
+
+  private async suggestConsolidation(transactions: any[]) {
+    const consolidations = [];
+    
+    // Group by function type
+    const functionGroups = new Map();
+    transactions.forEach((tx, index) => {
+      const func = tx.payload?.function || 'unknown';
+      if (!functionGroups.has(func)) {
+        functionGroups.set(func, []);
+      }
+      functionGroups.get(func).push({ tx, index });
+    });
+
+    for (const [func, group] of functionGroups) {
+      if (group.length > 1 && func.includes('transfer')) {
+        consolidations.push({
+          type: 'multi_transfer',
+          transactions: group,
+          consolidatedGas: group.length * 800, // Estimated gas for batch transfer
+          originalGas: group.length * 1200,
+          savings: group.length * 400,
+        });
+      }
+    }
+
+    return consolidations;
+  }
+
+  private estimateTimeImprovement(transactions: any[]): number {
+    // Estimate time improvement from batching vs sequential
+    const sequentialTime = transactions.length * 3; // 3 seconds per transaction
+    const batchTime = Math.max(5, transactions.length * 0.8); // Batch overhead + parallel processing
+    
+    return Math.max(0, sequentialTime - batchTime);
+  }
+
+  // Advanced optimization features
+  async optimizeForNetwork(transactionData: any, networkConditions: any) {
+    const baseOptimization = await this.optimizeTransaction(transactionData);
+    
+    // Adjust recommendations based on network conditions
+    if (networkConditions.congestion === 'high') {
+      baseOptimization.priceRecommendations.immediate.price *= 1.5;
+      baseOptimization.alternativeApproaches.push({
+        approach: 'delay_until_low_congestion',
+        description: 'Network is congested - consider delaying for better gas prices',
+        gasImpact: -300,
+        implementation: 'Monitor network conditions and execute when congestion decreases',
+      });
+    }
+
+    return baseOptimization;
+  }
+
+  async predictGasTrends(): Promise<GasTrend[]> {
+    // Mock implementation - would integrate with historical data
+    const trends: GasTrend[] = [];
+    const now = new Date();
+    
+    for (let i = 0; i < 24; i++) {
+      const hour = new Date(now.getTime() + i * 60 * 60 * 1000);
+      trends.push({
+        timestamp: hour,
+        predictedGasPrice: this.simulateGasPrice(i),
+        confidence: Math.random() * 0.4 + 0.6, // 60-100% confidence
+        factors: [`Hour ${i} historical pattern`],
+      });
+    }
+
+    return trends;
+  }
+
+  private simulateGasPrice(hour: number): number {
+    // Simulate daily gas price pattern
+    const basePrice = 100;
+    const peakMultiplier = 1.5; // Peak hours (9-17)
+    const lowMultiplier = 0.7;  // Low hours (1-6)
+    
+    if (hour >= 9 && hour <= 17) {
+      return basePrice * peakMultiplier;
+    } else if (hour >= 1 && hour <= 6) {
+      return basePrice * lowMultiplier;
+    }
+    
+    return basePrice;
+  }
+}
+
+interface GasTrend {
+  timestamp: Date;
+  predictedGasPrice: number;
+  confidence: number;
+  factors: string[];
 }
 
 export const gasOptimizer = GasOptimizer.getInstance();
