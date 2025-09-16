@@ -67,7 +67,7 @@ export const useSimulationStore = create<SimulationStore>()(
       
       addToHistory: (result) =>
         set((state) => ({
-          history: [result, ...state.history].slice(0, 50), // Keep last 50 results
+          history: [result, ...state.history].slice(0, 20), // Keep last 20 results to reduce memory usage
         })),
       
       clearHistory: () => set({ history: [] }),

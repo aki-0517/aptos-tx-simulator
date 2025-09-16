@@ -240,24 +240,72 @@ export class VMExecutionTracer {
   }
 
   private detectLoops(trace: VMExecutionTrace): LoopInfo[] {
-    // Simple loop detection based on repeating instruction patterns
+    // 最適化されたループ検出 - 大量の命令がある場合は制限を設ける
     const loops: LoopInfo[] = [];
+    const maxInstructions = 1000; // 最大1000命令まで処理
+    
+    if (trace.instructions.length > maxInstructions) {
+      // 大量の命令の場合は簡略化された検出を行う
+      return this.detectLoopsOptimized(trace.instructions.slice(0, maxInstructions));
+    }
+    
     const opcodeSequence = trace.instructions.map(inst => inst.opcode);
     
-    for (let i = 0; i < opcodeSequence.length - 3; i++) {
-      const pattern = opcodeSequence.slice(i, i + 3);
-      const nextOccurrence = this.findPattern(opcodeSequence, pattern, i + 3);
+    // パターンサイズを動的に調整（大量の命令の場合は小さくする）
+    const patternSize = opcodeSequence.length > 500 ? 2 : 3;
+    
+    for (let i = 0; i < opcodeSequence.length - patternSize; i++) {
+      const pattern = opcodeSequence.slice(i, i + patternSize);
+      const nextOccurrence = this.findPattern(opcodeSequence, pattern, i + patternSize);
       
       if (nextOccurrence !== -1) {
         loops.push({
           startIndex: i,
-          endIndex: nextOccurrence + 2,
+          endIndex: nextOccurrence + patternSize - 1,
           iterations: Math.floor((nextOccurrence - i) / pattern.length),
           pattern: pattern.join(' -> '),
         });
+        
+        // ループが見つかったら次のパターンにスキップ
+        i = nextOccurrence + patternSize - 1;
       }
     }
 
+    return loops;
+  }
+
+  private detectLoopsOptimized(instructions: VMInstruction[]): LoopInfo[] {
+    // 簡略化されたループ検出（大量データ用）
+    const loops: LoopInfo[] = [];
+    const opcodeSequence = instructions.map(inst => inst.opcode);
+    
+    // より効率的なアルゴリズムを使用
+    const patternMap = new Map<string, number[]>();
+    
+    for (let i = 0; i < opcodeSequence.length - 1; i++) {
+      const pattern = opcodeSequence.slice(i, i + 2).join(' -> ');
+      if (!patternMap.has(pattern)) {
+        patternMap.set(pattern, []);
+      }
+      patternMap.get(pattern)!.push(i);
+    }
+    
+    // 繰り返しパターンを検出
+    for (const [pattern, positions] of patternMap) {
+      if (positions.length > 1) {
+        const firstPos = positions[0];
+        const secondPos = positions[1];
+        if (secondPos - firstPos <= 10) { // 近い位置での繰り返しのみ
+          loops.push({
+            startIndex: firstPos,
+            endIndex: secondPos + 1,
+            iterations: positions.length,
+            pattern,
+          });
+        }
+      }
+    }
+    
     return loops;
   }
 

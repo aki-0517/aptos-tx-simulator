@@ -89,10 +89,15 @@ export function useSimulation() {
     return history.length > 0 ? history[0] : result;
   }, [history, result]);
 
-  // Auto-validation when transaction data changes
+  // Auto-validation when transaction data changes (debounced)
   useEffect(() => {
     if (transactionData.sender && transactionData.payload) {
-      validateTransaction(transactionData);
+      // デバウンス処理で頻繁なバリデーションを防ぐ
+      const timeoutId = setTimeout(() => {
+        validateTransaction(transactionData);
+      }, 500); // 500ms後に実行
+
+      return () => clearTimeout(timeoutId);
     }
   }, [transactionData, validateTransaction]);
 

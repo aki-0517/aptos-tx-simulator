@@ -35,7 +35,7 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
   const [selectedOptimizations, setSelectedOptimizations] = useState<Set<string>>(new Set());
 
   const runOptimization = async () => {
-    if (!simulationResult) return;
+    if (!simulationResult || simulationResult.gasUsed === undefined) return;
 
     setIsOptimizing(true);
     try {
@@ -129,7 +129,7 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
       return total + (opt?.gasSavings || 0);
     }, 0);
 
-  const savingsPercent = simulationResult 
+  const savingsPercent = simulationResult && simulationResult.gasUsed && simulationResult.gasUsed > 0
     ? Math.round((totalPotentialSavings / simulationResult.gasUsed) * 100)
     : 0;
 
@@ -148,18 +148,18 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
         <CardContent>
           <div className="space-y-4">
             {/* Current Gas Stats */}
-            {simulationResult && (
+            {simulationResult && simulationResult.gasUsed !== undefined && (
               <div className="grid grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{simulationResult.gasUsed.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{(simulationResult.gasUsed || 0).toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Current Gas Used</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{totalPotentialSavings.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">{(totalPotentialSavings || 0).toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Potential Savings</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{savingsPercent}%</div>
+                  <div className="text-2xl font-bold text-green-600">{savingsPercent || 0}%</div>
                   <div className="text-sm text-muted-foreground">Efficiency Gain</div>
                 </div>
               </div>
@@ -459,7 +459,7 @@ async function generateOptimizations(
       category: 'pricing',
       impact: 'medium',
       complexity: 'low',
-      gasSavings: Math.floor((transactionData.gasUnitPrice || 100) * 0.3 * simulationResult.gasUsed / 100),
+      gasSavings: Math.floor((transactionData.gasUnitPrice || 100) * 0.3 * (simulationResult.gasUsed || 0) / 100),
       implementation: 'Set gasUnitPrice to 120-130 for optimal cost-speed balance'
     });
   }
@@ -494,7 +494,8 @@ async function generateOptimizations(
   }
 
   // Max gas amount optimization
-  if ((transactionData.maxGasAmount || 100000) > simulationResult.gasUsed * 1.5) {
+  const gasUsed = simulationResult.gasUsed || 0;
+  if (gasUsed > 0 && (transactionData.maxGasAmount || 100000) > gasUsed * 1.5) {
     optimizations.push({
       id: 'max-gas-opt',
       title: 'Optimize Max Gas Amount',
@@ -503,7 +504,7 @@ async function generateOptimizations(
       impact: 'low',
       complexity: 'low',
       gasSavings: 5000,
-      implementation: `Set maxGasAmount to ${Math.ceil(simulationResult.gasUsed * 1.2)}`
+      implementation: `Set maxGasAmount to ${Math.ceil(gasUsed * 1.2)}`
     });
   }
 

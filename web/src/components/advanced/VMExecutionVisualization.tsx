@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,21 +33,42 @@ export function VMExecutionVisualization({ simulationResult, onAnalysisComplete 
   const [executionPath, setExecutionPath] = useState<ExecutionPath | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedInstruction, setSelectedInstruction] = useState<number | null>(null);
+  const [analyzedResultId, setAnalyzedResultId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (simulationResult) {
-      analyzeExecution();
-    }
-  }, [simulationResult]);
-
-  const analyzeExecution = async () => {
+  const analyzeExecution = useCallback(async () => {
     if (!simulationResult) return;
 
+    // 分析済みかどうかをチェック（gasUsedとvmStatusでユニークIDを作成）
+    const resultId = `${simulationResult.gasUsed || 0}-${simulationResult.vmStatus || 'unknown'}`;
+    if (analyzedResultId === resultId) {
+      return; // 既に分析済み
+    }
+
+    const startTime = performance.now();
     setIsAnalyzing(true);
+    
     try {
-      const executionTrace = await vmExecutionTracer.analyzeExecution(simulationResult);
-      const path = vmExecutionTracer.analyzeExecutionPath(executionTrace);
-      const dependencies = vmExecutionTracer.analyzeResourceDependencies(executionTrace);
+      // 非同期でバッチ処理を実行し、UIをブロックしないようにする
+      const executionTrace = await new Promise<VMExecutionTrace>((resolve) => {
+        setTimeout(async () => {
+          const trace = await vmExecutionTracer.analyzeExecution(simulationResult);
+          resolve(trace);
+        }, 0);
+      });
+
+      // パス分析も非同期で実行
+      const [path, dependencies] = await Promise.all([
+        new Promise<ExecutionPath>((resolve) => {
+          setTimeout(() => {
+            resolve(vmExecutionTracer.analyzeExecutionPath(executionTrace));
+          }, 0);
+        }),
+        new Promise<any[]>((resolve) => {
+          setTimeout(() => {
+            resolve(vmExecutionTracer.analyzeResourceDependencies(executionTrace));
+          }, 0);
+        })
+      ]);
       
       setTrace(executionTrace);
       setExecutionPath(path);
@@ -65,15 +86,30 @@ export function VMExecutionVisualization({ simulationResult, onAnalysisComplete 
       };
       
       onAnalysisComplete?.(analysis);
+      
+      // 分析完了IDを設定
+      setAnalyzedResultId(resultId);
+      
+      // パフォーマンス監視
+      const endTime = performance.now();
+      console.log(`VM execution analysis completed in ${(endTime - startTime).toFixed(2)}ms`);
+      
     } catch (error) {
       console.error('VM execution analysis failed:', error);
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [simulationResult, onAnalysisComplete, analyzedResultId]);
+
+  useEffect(() => {
+    if (simulationResult && !isAnalyzing) {
+      analyzeExecution();
+    }
+  }, [simulationResult, analyzeExecution, isAnalyzing]);
 
   const loadExampleTrace = async () => {
     setIsAnalyzing(true);
+    setAnalyzedResultId(null); // 例のトレースを読み込む際は分析済みIDをリセット
     try {
       // Create a mock execution trace for demonstration
       const mockTrace: VMExecutionTrace = {
@@ -179,6 +215,9 @@ export function VMExecutionVisualization({ simulationResult, onAnalysisComplete 
             <Activity className="h-8 w-8 mx-auto animate-spin" />
             <p>Analyzing VM execution trace...</p>
             <Progress value={66} className="w-full max-w-md mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              This may take a moment for complex transactions
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -307,83 +346,115 @@ function InstructionTrace({
   selectedInstruction, 
   onSelectInstruction 
 }: InstructionTraceProps) {
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemHeight = 60; // 各アイテムの高さ
+  const containerHeight = 384; // max-h-96 = 384px
+  const visibleCount = Math.ceil(containerHeight / itemHeight);
+
+  // 仮想化されたリストの実装
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    const start = Math.floor(scrollTop / itemHeight);
+    const end = Math.min(start + visibleCount + 5, instructions.length); // バッファを追加
+    
+    setVisibleRange({ start, end });
+  }, [instructions.length, visibleCount]);
+
+  const visibleInstructions = instructions.slice(visibleRange.start, visibleRange.end);
+
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-medium">Instruction Execution Trace</h4>
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {instructions.map((instruction, index) => (
-          <Card
-            key={index}
-            className={`cursor-pointer transition-colors ${
-              selectedInstruction === index ? 'ring-2 ring-primary' : 'hover:bg-muted/50'
-            }`}
-            onClick={() => onSelectInstruction(selectedInstruction === index ? null : index)}
-          >
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {index.toString().padStart(3, '0')}
-                  </Badge>
-                  <span className="font-mono text-sm">{instruction.opcode}</span>
-                  {instruction.operands.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {instruction.operands.slice(0, 2).map(op => 
-                        typeof op === 'string' ? op : JSON.stringify(op)
-                      ).join(', ')}
-                      {instruction.operands.length > 2 && '...'}
-                    </span>
-                  )}
+      <h4 className="text-sm font-medium">
+        Instruction Execution Trace ({instructions.length} instructions)
+      </h4>
+      <div 
+        ref={containerRef}
+        className="space-y-2 max-h-96 overflow-y-auto"
+        onScroll={handleScroll}
+      >
+        {/* 仮想化のためのオフセット */}
+        <div style={{ height: visibleRange.start * itemHeight }} />
+        
+        {visibleInstructions.map((instruction, index) => {
+          const actualIndex = visibleRange.start + index;
+          return (
+            <Card
+              key={actualIndex}
+              className={`cursor-pointer transition-colors ${
+                selectedInstruction === actualIndex ? 'ring-2 ring-primary' : 'hover:bg-muted/50'
+              }`}
+              onClick={() => onSelectInstruction(selectedInstruction === actualIndex ? null : actualIndex)}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {actualIndex.toString().padStart(3, '0')}
+                    </Badge>
+                    <span className="font-mono text-sm">{instruction.opcode}</span>
+                    {instruction.operands.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {instruction.operands.slice(0, 2).map(op => 
+                          typeof op === 'string' ? op : JSON.stringify(op)
+                        ).join(', ')}
+                        {instruction.operands.length > 2 && '...'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      <Zap className="h-3 w-3 mr-1" />
+                      {instruction.gasConsumed.toLocaleString()}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {new Date(instruction.timestamp).toLocaleTimeString()}
+                    </Badge>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    <Zap className="h-3 w-3 mr-1" />
-                    {instruction.gasConsumed.toLocaleString()}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs">
-                    <Clock className="h-3 w-3 mr-1" />
-                    {new Date(instruction.timestamp).toLocaleTimeString()}
-                  </Badge>
-                </div>
-              </div>
 
-              {selectedInstruction === index && stackStates[index] && (
-                <div className="mt-3 pt-3 border-t">
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <h5 className="font-medium mb-1">Stack Before</h5>
-                      <div className="space-y-1">
-                        {instruction.stackBefore.length > 0 ? (
-                          instruction.stackBefore.map((item, i) => (
-                            <div key={i} className="bg-muted/50 p-1 rounded font-mono">
-                              {JSON.stringify(item)}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-muted-foreground italic">Empty</div>
-                        )}
+                {selectedInstruction === actualIndex && stackStates[actualIndex] && (
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <h5 className="font-medium mb-1">Stack Before</h5>
+                        <div className="space-y-1">
+                          {instruction.stackBefore.length > 0 ? (
+                            instruction.stackBefore.map((item, i) => (
+                              <div key={i} className="bg-muted/50 p-1 rounded font-mono">
+                                {JSON.stringify(item)}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-muted-foreground italic">Empty</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <h5 className="font-medium mb-1">Stack After</h5>
-                      <div className="space-y-1">
-                        {instruction.stackAfter.length > 0 ? (
-                          instruction.stackAfter.map((item, i) => (
-                            <div key={i} className="bg-muted/50 p-1 rounded font-mono">
-                              {JSON.stringify(item)}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-muted-foreground italic">Empty</div>
-                        )}
+                      <div>
+                        <h5 className="font-medium mb-1">Stack After</h5>
+                        <div className="space-y-1">
+                          {instruction.stackAfter.length > 0 ? (
+                            instruction.stackAfter.map((item, i) => (
+                              <div key={i} className="bg-muted/50 p-1 rounded font-mono">
+                                {JSON.stringify(item)}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-muted-foreground italic">Empty</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+        
+        {/* 仮想化のためのオフセット */}
+        <div style={{ height: (instructions.length - visibleRange.end) * itemHeight }} />
       </div>
     </div>
   );
