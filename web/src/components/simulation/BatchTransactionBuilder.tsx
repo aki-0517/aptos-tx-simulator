@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Play, ArrowRight, Shuffle, FileText } from 'lucide-react';
+import { Plus, Trash2, Play, ArrowRight, Shuffle, FileText, AlertCircle } from 'lucide-react';
 import { TransactionData } from '@/types/aptos';
 import { EntryFunction } from '@aptos-labs/ts-sdk';
 import { batchTransactionSimulator } from '@/lib/batch-simulator';
@@ -61,8 +62,36 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
       const result = await batchTransactionSimulator.simulateBatch(batchData);
       setResults(result);
       onResults?.(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Batch simulation failed:', error);
+      
+      // Create a detailed error result
+      const errorResult = {
+        success: false,
+        error: {
+          message: error.message || 'Batch simulation failed',
+          details: error.details || 'An unexpected error occurred during batch simulation',
+          suggestion: error.suggestion || 'Please check your transaction data and try again',
+          transactionIndex: error.transactionIndex,
+          code: error.code || 'BATCH_SIMULATION_ERROR'
+        },
+        gasUsed: 0,
+        totalGasCostAPT: 0,
+        executionTime: 0,
+        individualResults: transactions.map((tx, index) => ({
+          success: false,
+          gasUsed: 0,
+          vmStatus: 'FAILED',
+          error: {
+            message: error.message || 'Transaction failed',
+            details: error.details || 'Unable to simulate this transaction'
+          }
+        })),
+        dependencies: []
+      };
+      
+      setResults(errorResult);
+      onResults?.(errorResult);
     } finally {
       setIsSimulating(false);
     }
@@ -315,17 +344,47 @@ function BatchResultsDisplay({ results }: BatchResultsDisplayProps) {
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
+            {/* Error Display */}
+            {!results.success && results.error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <div className="font-medium">Batch Simulation Failed</div>
+                    <div className="text-sm">
+                      <strong>Error:</strong> {results.error.message || 'Unknown error occurred'}
+                    </div>
+                    {results.error.details && (
+                      <div className="text-sm">
+                        <strong>Details:</strong> {results.error.details}
+                      </div>
+                    )}
+                    {results.error.suggestion && (
+                      <div className="text-sm">
+                        <strong>Suggestion:</strong> {results.error.suggestion}
+                      </div>
+                    )}
+                    {results.error.transactionIndex !== undefined && (
+                      <div className="text-sm">
+                        <strong>Failed Transaction:</strong> #{results.error.transactionIndex + 1}
+                      </div>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Total Gas Used</h4>
-                <p className="text-2xl font-bold">{results.gasUsed.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{results.gasUsed?.toLocaleString() || '0'}</p>
                 <p className="text-sm text-muted-foreground">
-                  {(results.totalGasCostAPT).toFixed(6)} APT
+                  {(results.totalGasCostAPT || 0).toFixed(6)} APT
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">Execution Time</h4>
-                <p className="text-2xl font-bold">{results.executionTime}ms</p>
+                <p className="text-2xl font-bold">{results.executionTime || '0'}ms</p>
                 {results.parallelExecutionSavings && (
                   <p className="text-sm text-green-600">
                     ~{results.parallelExecutionSavings} gas saved from parallelization
@@ -333,6 +392,30 @@ function BatchResultsDisplay({ results }: BatchResultsDisplayProps) {
                 )}
               </div>
             </div>
+
+            {/* Summary Statistics */}
+            {results.individualResults && (
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-green-600">
+                    {results.individualResults.filter((r: any) => r.success).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Successful</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold text-red-600">
+                    {results.individualResults.filter((r: any) => !r.success).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Failed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-bold">
+                    {results.individualResults.length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Total</div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="individual" className="space-y-3">
@@ -345,8 +428,27 @@ function BatchResultsDisplay({ results }: BatchResultsDisplayProps) {
                   </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Gas: {result.gasUsed} | Status: {result.vmStatus}
+                  Gas: {result.gasUsed || 0} | Status: {result.vmStatus || 'Unknown'}
                 </div>
+                
+                {/* Error Details for Failed Transactions */}
+                {!result.success && result.error && (
+                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-800 rounded">
+                    <div className="text-sm">
+                      <div className="font-medium text-red-800 dark:text-red-200 mb-1">
+                        Error Details:
+                      </div>
+                      <div className="text-red-700 dark:text-red-300">
+                        {result.error.message || result.error}
+                      </div>
+                      {result.error.suggestion && (
+                        <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          <strong>Suggestion:</strong> {result.error.suggestion}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </TabsContent>

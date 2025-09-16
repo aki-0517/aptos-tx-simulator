@@ -380,10 +380,25 @@ function SponsoredResultsDisplay({ results }: SponsoredResultsDisplayProps) {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <div className="space-y-1">
-                <div className="font-medium">{results.error.message}</div>
+              <div className="space-y-2">
+                <div className="font-medium">Sponsored Transaction Failed</div>
+                <div className="text-sm">
+                  <strong>Error:</strong> {results.error.message || 'Unknown error occurred'}
+                </div>
+                {results.error.details && (
+                  <div className="text-sm">
+                    <strong>Details:</strong> {results.error.details}
+                  </div>
+                )}
                 {results.error.suggestion && (
-                  <div className="text-sm">Suggestion: {results.error.suggestion}</div>
+                  <div className="text-sm">
+                    <strong>Suggestion:</strong> {results.error.suggestion}
+                  </div>
+                )}
+                {results.error.code && (
+                  <div className="text-sm">
+                    <strong>Error Code:</strong> {results.error.code}
+                  </div>
                 )}
               </div>
             </AlertDescription>
