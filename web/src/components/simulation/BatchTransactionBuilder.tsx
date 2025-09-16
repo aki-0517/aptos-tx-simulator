@@ -111,33 +111,33 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
     const exampleTransactions = [
       {
         type: 'entry_function',
-        sender: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+        sender: '0xddab2c9c082b121333038b86b2aff5e917b12901bc1ce7ea49b4fc579504f0d0',
         payload: {
           function: '0x1::coin::transfer',
-          function_arguments: ['0x2::aptos_coin::AptosCoin', '0x2c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8', '100000000'],
-          type_arguments: [],
+          function_arguments: ['0x3', '100000000'],
+          type_arguments: ['0x1::aptos_coin::AptosCoin'],
         },
         maxGasAmount: 50000,
         gasUnitPrice: 100,
       },
       {
         type: 'entry_function',
-        sender: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+        sender: '0xddab2c9c082b121333038b86b2aff5e917b12901bc1ce7ea49b4fc579504f0d0',
         payload: {
-          function: '0x1::coin::register',
-          function_arguments: ['0x2::aptos_coin::AptosCoin'],
-          type_arguments: [],
+          function: '0x1::coin::transfer',
+          function_arguments: ['0x4', '1000'],
+          type_arguments: ['0x1::aptos_coin::AptosCoin'],
         },
         maxGasAmount: 30000,
         gasUnitPrice: 100,
       },
       {
         type: 'entry_function',
-        sender: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+        sender: '0xddab2c9c082b121333038b86b2aff5e917b12901bc1ce7ea49b4fc579504f0d0',
         payload: {
-          function: '0x1::account::create_account',
-          function_arguments: ['0x3c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8'],
-          type_arguments: [],
+          function: '0x1::coin::transfer',
+          function_arguments: ['0x5', '500'],
+          type_arguments: ['0x1::aptos_coin::AptosCoin'],
         },
         maxGasAmount: 40000,
         gasUnitPrice: 100,
@@ -311,6 +311,18 @@ function TransactionCard({ transaction, index, onUpdate, onRemove }: Transaction
             onChange={(e) => {
               const args = e.target.value.split(',').map(arg => arg.trim()).filter(Boolean);
               updatePayload('function_arguments', args);
+            }}
+            className="text-sm"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Type Arguments (comma-separated)</label>
+          <Input
+            placeholder="0x2::aptos_coin::AptosCoin, ..."
+            value={(transaction.payload as any)?.type_arguments?.join(', ') || ''}
+            onChange={(e) => {
+              const targs = e.target.value.split(',').map(arg => arg.trim()).filter(Boolean);
+              updatePayload('type_arguments', targs);
             }}
             className="text-sm"
           />
