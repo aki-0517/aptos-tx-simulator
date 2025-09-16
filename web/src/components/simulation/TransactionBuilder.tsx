@@ -10,7 +10,11 @@ import { useWallet } from '@/hooks/useWallet';
 import { formatAddress, parseTransactionArguments, validateMoveFunction, validateAddress } from '@/lib/utils';
 import { TransactionPayloadEntryFunction } from '@aptos-labs/ts-sdk';
 
-export function TransactionBuilder() {
+interface TransactionBuilderProps {
+  onSimulationRun?: () => void;
+}
+
+export function TransactionBuilder({ onSimulationRun }: TransactionBuilderProps) {
   const { 
     transactionData, 
     isSimulating, 
@@ -77,6 +81,7 @@ export function TransactionBuilder() {
       return;
     }
     await simulate();
+    onSimulationRun?.();
   };
 
   return (

@@ -1,17 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { TransactionBuilder } from '@/components/simulation/TransactionBuilder';
 import { SimulationResults } from '@/components/simulation/SimulationResults';
 import { WalletConnection } from '@/components/common/WalletConnection';
 import { ClientOnly } from '@/components/common/ClientOnly';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulation } from '@/hooks/useSimulation';
 import { Activity, Zap, Shield, Code } from 'lucide-react';
 
 export default function HomePage() {
   const { history, clearHistory } = useSimulation();
+  const [activeTab, setActiveTab] = useState("create");
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -78,18 +80,26 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Transaction Builder */}
-        <div className="xl:col-span-4">
-          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
-            <TransactionBuilder />
-          </ClientOnly>
-        </div>
-
-        {/* Simulation Results */}
-        <div className="xl:col-span-5">
-          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
-            <SimulationResults />
-          </ClientOnly>
+        {/* Main Content Tabs */}
+        <div className="xl:col-span-9">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="create">Create Transaction</TabsTrigger>
+              <TabsTrigger value="results">Simulation Results</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="create">
+              <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
+                <TransactionBuilder onSimulationRun={() => setActiveTab("results")} />
+              </ClientOnly>
+            </TabsContent>
+            
+            <TabsContent value="results">
+              <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
+                <SimulationResults />
+              </ClientOnly>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
