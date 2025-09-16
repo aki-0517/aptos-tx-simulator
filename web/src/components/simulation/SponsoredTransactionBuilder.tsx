@@ -66,7 +66,7 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
       const sponsoredData = {
         type: 'sponsored',
         transaction,
-        sponsor: sponsorAddress,
+        sponsorAddress: sponsorAddress,
         sender: transaction.sender,
         maxGasAmount: transaction.maxGasAmount,
         gasUnitPrice: transaction.gasUnitPrice,
@@ -100,18 +100,22 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
   const formatBalance = (balance: number) => (balance / 100000000).toFixed(6);
 
   const loadExample = () => {
+    const senderAddr = '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef';
+    const recipient = '0x' + '2'.repeat(64);
+    const sponsor = '0x' + '3'.repeat(64);
+
     setTransaction({
       type: 'entry_function',
-      sender: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+      sender: senderAddr,
       payload: {
         function: '0x1::coin::transfer',
-        function_arguments: ['0x2::aptos_coin::AptosCoin', '0x2c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8', '100000000'],
-        type_arguments: [],
+        function_arguments: [recipient, '100000000'],
+        type_arguments: ['0x1::aptos_coin::AptosCoin'],
       },
       maxGasAmount: 50000,
       gasUnitPrice: 100,
     });
-    setSponsorAddress('0x3c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8');
+    setSponsorAddress(sponsor);
   };
 
   return (

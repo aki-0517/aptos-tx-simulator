@@ -63,7 +63,10 @@ export class SponsoredTransactionSimulator {
 
   private async getSponsorBalance(sponsorAddress: string): Promise<number> {
     try {
-      return await aptosClient.getAccountBalance(sponsorAddress);
+      // Get balance in octas (same unit as transaction costs)
+      const client = aptosClient.getCurrentClient();
+      const amountOctas = await client.getAccountAPTAmount({ accountAddress: sponsorAddress });
+      return Number.isFinite(amountOctas) ? amountOctas : 0;
     } catch (error) {
       console.warn('Failed to get sponsor balance:', error);
       return 0;
@@ -138,12 +141,12 @@ export class SponsoredTransactionSimulator {
         errors.push('Invalid sponsor address format');
       }
       
-      // Get balance
+      // Get balance (in octas)
       balance = await this.getSponsorBalance(sponsorAddress);
       const canAfford = balance >= estimatedCost;
       
       if (!canAfford) {
-        errors.push(`Sponsor balance insufficient. Required: ${(estimatedCost / 100000000).toFixed(6)} APT`);
+        errors.push(`Sponsor balance insufficient. Required: ${(estimatedCost / 100000000).toFixed(6)} APT, Available: ${(balance / 100000000).toFixed(6)} APT`);
       }
       
       // Check if account exists
