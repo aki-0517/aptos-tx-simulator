@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
-import { UserCheck, DollarSign, Play, AlertCircle, ArrowRight } from 'lucide-react';
+import { UserCheck, DollarSign, Play, AlertCircle, ArrowRight, FileText } from 'lucide-react';
 import { TransactionData, SponsoredTransactionData } from '@/types/aptos';
 import { sponsoredTransactionSimulator } from '@/lib/sponsored-simulator';
 import { useWallet } from '@/hooks/useWallet';
@@ -99,6 +99,21 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
 
   const formatBalance = (balance: number) => (balance / 100000000).toFixed(6);
 
+  const loadExample = () => {
+    setTransaction({
+      type: 'entry_function',
+      sender: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+      payload: {
+        function: '0x1::coin::transfer',
+        function_arguments: ['0x2::aptos_coin::AptosCoin', '0x2c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8', '100000000'],
+        type_arguments: [],
+      },
+      maxGasAmount: 50000,
+      gasUnitPrice: 100,
+    });
+    setSponsorAddress('0x3c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8');
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -114,7 +129,13 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
         <CardContent className="space-y-6">
           {/* Transaction Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Transaction Details</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium">Transaction Details</h3>
+              <Button variant="outline" size="sm" onClick={loadExample}>
+                <FileText className="h-4 w-4 mr-1" />
+                Load Example
+              </Button>
+            </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

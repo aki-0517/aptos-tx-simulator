@@ -17,7 +17,8 @@ import {
   ArrowDown,
   ArrowUp,
   BarChart3,
-  Lightbulb
+  Lightbulb,
+  FileText
 } from 'lucide-react';
 import { TransactionData } from '@/types/aptos';
 import { SimulationResult } from '@/types/simulation';
@@ -45,6 +46,63 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
       setOptimizations(optimizationSuggestions);
     } catch (error) {
       console.error('Gas optimization failed:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const loadExampleOptimizations = async () => {
+    setIsOptimizing(true);
+    try {
+      // Simulate loading example optimizations
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const exampleOptimizations: GasOptimization[] = [
+        {
+          id: 'gas-price-example',
+          title: 'Optimize Gas Unit Price',
+          description: 'Reduce gas unit price from 150 to 120 for better cost efficiency',
+          category: 'pricing',
+          impact: 'medium',
+          complexity: 'low',
+          gasSavings: 15000,
+          implementation: 'Set gasUnitPrice to 120 for optimal cost-speed balance'
+        },
+        {
+          id: 'batch-storage-example',
+          title: 'Batch Storage Operations',
+          description: 'Combine multiple storage writes into fewer operations',
+          category: 'storage',
+          impact: 'high',
+          complexity: 'medium',
+          gasSavings: 25000,
+          implementation: 'Refactor code to batch resource modifications'
+        },
+        {
+          id: 'max-gas-example',
+          title: 'Optimize Max Gas Amount',
+          description: 'Set max gas closer to actual usage to avoid over-allocation',
+          category: 'allocation',
+          impact: 'low',
+          complexity: 'low',
+          gasSavings: 8000,
+          implementation: 'Set maxGasAmount to 85000 based on simulation results'
+        },
+        {
+          id: 'event-optimization-example',
+          title: 'Reduce Event Emissions',
+          description: 'Eliminate unnecessary event emissions',
+          category: 'events',
+          impact: 'medium',
+          complexity: 'medium',
+          gasSavings: 12000,
+          implementation: 'Remove non-essential events from transaction'
+        }
+      ];
+      
+      setOptimizations(exampleOptimizations);
+    } catch (error) {
+      console.error('Failed to load example optimizations:', error);
     } finally {
       setIsOptimizing(false);
     }
@@ -109,7 +167,20 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
 
             {/* Optimization Controls */}
             <div className="flex justify-between items-center">
-              <div>
+              <div className="flex gap-2">
+                <Button onClick={loadExampleOptimizations} disabled={isOptimizing}>
+                  {isOptimizing ? (
+                    <>
+                      <Settings className="h-4 w-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Load Example
+                    </>
+                  )}
+                </Button>
                 <Button onClick={runOptimization} disabled={isOptimizing || !simulationResult}>
                   {isOptimizing ? (
                     <>
@@ -301,13 +372,6 @@ function GasAnalysisBreakdown({ simulationResult }: { simulationResult?: Simulat
     );
   }
 
-  const gasBreakdown = [
-    { category: 'Transaction Intrinsic', amount: 21000, percent: 35 },
-    { category: 'Function Execution', amount: 45000, percent: 45 },
-    { category: 'Storage Operations', amount: 15000, percent: 15 },
-    { category: 'Event Emission', amount: 5000, percent: 5 },
-  ];
-
   return (
     <div className="space-y-4">
       <h4 className="text-sm font-medium flex items-center gap-2">
@@ -315,29 +379,9 @@ function GasAnalysisBreakdown({ simulationResult }: { simulationResult?: Simulat
         Gas Usage Breakdown
       </h4>
       
-      <div className="space-y-3">
-        {gasBreakdown.map((item, index) => (
-          <div key={index} className="space-y-1">
-            <div className="flex items-center justify-between text-sm">
-              <span>{item.category}</span>
-              <span className="font-mono">{item.amount.toLocaleString()} gas ({item.percent}%)</span>
-            </div>
-            <div className="w-full bg-muted rounded-full h-2">
-              <div 
-                className="h-2 rounded-full bg-primary"
-                style={{ width: `${item.percent}%` }}
-              />
-            </div>
-          </div>
-        ))}
+      <div className="text-center py-8 text-muted-foreground">
+        Gas analysis will be available after running a simulation
       </div>
-
-      <Alert>
-        <TrendingUp className="h-4 w-4" />
-        <AlertDescription>
-          Function execution consumes 45% of gas. Consider optimizing Move code for better efficiency.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }

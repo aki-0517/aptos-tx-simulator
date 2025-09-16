@@ -139,35 +139,6 @@ export default function AdvancedPage() {
             </CardContent>
           </Card>
 
-          {/* Quick Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Quick Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  Gas Optimized
-                </span>
-                <span className="font-mono">98.2%</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  State Forks
-                </span>
-                <span className="font-mono">3</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Success Rate
-                </span>
-                <span className="font-mono">94.7%</span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Main Content */}

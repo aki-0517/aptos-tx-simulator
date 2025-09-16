@@ -17,7 +17,8 @@ import {
   AlertCircle, 
   Clock,
   User,
-  Network
+  Network,
+  FileText
 } from 'lucide-react';
 import { StateFork, StateModification } from '@/types/aptos';
 import { stateForkManager } from '@/lib/state-fork-manager';
@@ -88,6 +89,32 @@ export function StateForkManager() {
     }
   };
 
+  const createExampleFork = async () => {
+    try {
+      const fork = await stateForkManager.createFork(
+        'Example Test Fork',
+        'A sample fork for testing coin transfers and account modifications'
+      );
+      
+      // Add some example modifications
+      await stateForkManager.modifyAccountBalance(
+        fork.id, 
+        '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef', 
+        100000000000 // 1000 APT
+      );
+      await stateForkManager.modifyAccountBalance(
+        fork.id, 
+        '0x2c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8', 
+        50000000000 // 500 APT
+      );
+      
+      await loadForks();
+      setSelectedFork(fork);
+    } catch (error) {
+      console.error('Failed to create example fork:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -103,10 +130,16 @@ export function StateForkManager() {
         <CardContent>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-medium">Your Forks ({forks.length})</h3>
-            <Button onClick={() => setIsCreating(true)} size="sm">
-              <Plus className="h-4 w-4 mr-1" />
-              Create Fork
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={createExampleFork} size="sm">
+                <FileText className="h-4 w-4 mr-1" />
+                Create Example
+              </Button>
+              <Button onClick={() => setIsCreating(true)} size="sm">
+                <Plus className="h-4 w-4 mr-1" />
+                Create Fork
+              </Button>
+            </div>
           </div>
 
           {/* Create Fork Dialog */}

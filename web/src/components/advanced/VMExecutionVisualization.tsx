@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Cpu
+  Cpu,
+  FileText
 } from 'lucide-react';
 import { VMExecutionTrace, VMInstruction, GasUsageStep, ResourceAccess } from '@/types/simulation';
 import { vmExecutionTracer, ExecutionPath, LoopInfo } from '@/lib/vm-execution-tracer';
@@ -71,6 +72,105 @@ export function VMExecutionVisualization({ simulationResult, onAnalysisComplete 
     }
   };
 
+  const loadExampleTrace = async () => {
+    setIsAnalyzing(true);
+    try {
+      // Create a mock execution trace for demonstration
+      const mockTrace: VMExecutionTrace = {
+        instructions: [
+          {
+            opcode: 'Call',
+            operands: ['0x1::coin::transfer'],
+            gasConsumed: 5000,
+            timestamp: Date.now(),
+            stackBefore: [],
+            stackAfter: ['0x1::coin::CoinStore'],
+          },
+          {
+            opcode: 'MoveLoc',
+            operands: [0],
+            gasConsumed: 1000,
+            timestamp: Date.now() + 1,
+            stackBefore: ['0x1::coin::CoinStore'],
+            stackAfter: ['0x1::coin::CoinStore', '0x1::coin::CoinStore'],
+          },
+          {
+            opcode: 'Call',
+            operands: ['0x1::coin::withdraw'],
+            gasConsumed: 8000,
+            timestamp: Date.now() + 2,
+            stackBefore: ['0x1::coin::CoinStore', '0x1::coin::CoinStore'],
+            stackAfter: ['0x1::coin::CoinStore', '0x1::coin::Coin'],
+          },
+          {
+            opcode: 'Call',
+            operands: ['0x1::coin::deposit'],
+            gasConsumed: 6000,
+            timestamp: Date.now() + 3,
+            stackBefore: ['0x1::coin::CoinStore', '0x1::coin::Coin'],
+            stackAfter: ['0x1::coin::CoinStore'],
+          },
+        ],
+        gasUsage: [
+          { step: 1, gasUsed: 5000, category: 'execution' },
+          { step: 2, gasUsed: 6000, category: 'execution' },
+          { step: 3, gasUsed: 14000, category: 'execution' },
+          { step: 4, gasUsed: 20000, category: 'execution' },
+        ],
+        resourceAccesses: [
+          {
+            address: '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef',
+            resourceType: 'CoinStore',
+            accessType: 'read',
+            gasUsed: 2000,
+          },
+          {
+            address: '0x2c2b4121696d61c0a69b8c0c6c5e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8',
+            resourceType: 'CoinStore',
+            accessType: 'write',
+            gasUsed: 3000,
+          },
+        ],
+        moduleLoads: [
+          {
+            moduleName: '0x1::coin',
+            address: '0x1',
+            gasUsed: 1000,
+          },
+        ],
+        stackStates: [],
+      };
+
+      const mockPath: ExecutionPath = {
+        totalInstructions: 4,
+        branchPoints: [],
+        criticalPath: [2, 3],
+        loopDetection: [],
+      };
+
+      setTrace(mockTrace);
+      setExecutionPath(mockPath);
+      
+      const analysis = {
+        trace: mockTrace,
+        path: mockPath,
+        dependencies: [],
+        summary: {
+          totalInstructions: 4,
+          totalGasUsed: 20000,
+          resourceAccesses: 2,
+          moduleLoads: 1,
+        }
+      };
+      
+      onAnalysisComplete?.(analysis);
+    } catch (error) {
+      console.error('Failed to load example trace:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   if (isAnalyzing) {
     return (
       <Card>
@@ -91,9 +191,15 @@ export function VMExecutionVisualization({ simulationResult, onAnalysisComplete 
         <CardContent className="py-8 text-center">
           <Eye className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
           <p className="text-muted-foreground">No execution trace available</p>
-          <Button variant="outline" onClick={analyzeExecution} className="mt-4">
-            Analyze Execution
-          </Button>
+          <div className="flex gap-2 justify-center mt-4">
+            <Button variant="outline" onClick={loadExampleTrace}>
+              <FileText className="h-4 w-4 mr-1" />
+              Load Example
+            </Button>
+            <Button variant="outline" onClick={analyzeExecution}>
+              Analyze Execution
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
