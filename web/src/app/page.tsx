@@ -3,18 +3,76 @@
 import React, { useState } from 'react';
 import { TransactionBuilder } from '@/components/simulation/TransactionBuilder';
 import { SimulationResults } from '@/components/simulation/SimulationResults';
-import { WalletConnection } from '@/components/common/WalletConnection';
 import { ClientOnly } from '@/components/common/ClientOnly';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useSimulation } from '@/hooks/useSimulation';
-import { Activity, Zap, Shield, Code, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { BatchTransactionBuilder } from '@/components/simulation/BatchTransactionBuilder';
+import { SponsoredTransactionBuilder } from '@/components/simulation/SponsoredTransactionBuilder';
+import { StateForkManager } from '@/components/advanced/StateForkManager';
+import { VMExecutionVisualization } from '@/components/advanced/VMExecutionVisualization';
+import { GasOptimizer } from '@/components/advanced/GasOptimizer';
+import { 
+  Activity, 
+  Zap, 
+  Code,
+  Layers,
+  UserCheck,
+  GitBranch
+} from 'lucide-react';
 
 export default function HomePage() {
-  const { history, clearHistory } = useSimulation();
+  const { history, clearHistory, getLatestResult, transactionData } = useSimulation();
   const [activeTab, setActiveTab] = useState("create");
+  const [transactionMode, setTransactionMode] = useState("basic");
+  const [vmAnalysisResult, setVmAnalysisResult] = useState<any>(null);
+
+  const transactionModes = [
+    {
+      id: 'basic',
+      name: 'Basic Transaction',
+      description: 'Simple single transaction simulation',
+      icon: Code,
+      status: 'stable'
+    },
+    {
+      id: 'batch',
+      name: 'Batch Transactions',
+      description: 'Execute multiple transactions with dependency analysis',
+      icon: Layers,
+      status: 'stable'
+    },
+    {
+      id: 'sponsored',
+      name: 'Sponsored Transactions', 
+      description: 'Create transactions where sponsors pay gas fees',
+      icon: UserCheck,
+      status: 'stable'
+    },
+    {
+      id: 'state-fork',
+      name: 'State Fork Management',
+      description: 'Create and manage blockchain state forks for testing',
+      icon: GitBranch,
+      status: 'stable'
+    },
+    {
+      id: 'vm-visualization',
+      name: 'VM Execution Visualization',
+      description: 'Detailed analysis of Move VM instruction execution',
+      icon: Activity,
+      status: 'beta'
+    },
+    {
+      id: 'gas-optimizer',
+      name: 'Gas Optimizer',
+      description: 'AI-powered gas optimization with efficiency recommendations',
+      icon: Zap,
+      status: 'stable'
+    }
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -27,24 +85,52 @@ export default function HomePage() {
           Simulate Aptos blockchain transactions before execution to preview<br />
           gas usage and detect potential errors in advance.
         </p>
-        <div className="flex justify-center gap-4">
-          <Link href="/advanced">
-            <Button variant="outline" size="lg">
-              <Shield className="h-4 w-4 mr-2" />
-              Advanced Features
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Button>
-          </Link>
-        </div>
       </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Left Sidebar - Wallet */}
+        {/* Left Sidebar - Transaction Mode */}
         <div className="xl:col-span-3 space-y-6">
-          <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading wallet...</CardContent></Card>}>
-            <WalletConnection />
-          </ClientOnly>
+          {/* Transaction Mode Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Transaction Mode</CardTitle>
+              <CardDescription>
+                Select the type of transaction to simulate
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {transactionModes.map((mode) => {
+                const Icon = mode.icon;
+                return (
+                  <Button
+                    key={mode.id}
+                    variant={transactionMode === mode.id ? "default" : "ghost"}
+                    className="w-full justify-start h-auto p-3"
+                    onClick={() => setTransactionMode(mode.id)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{mode.name}</span>
+                          <Badge 
+                            variant={mode.status === 'stable' ? 'default' : 'secondary'} 
+                            className="text-xs"
+                          >
+                            {mode.status}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {mode.description}
+                        </p>
+                      </div>
+                    </div>
+                  </Button>
+                );
+              })}
+            </CardContent>
+          </Card>
           
           {/* Simulation History */}
           {history.length > 0 && (
@@ -100,7 +186,80 @@ export default function HomePage() {
             
             <TabsContent value="create">
               <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
-                <TransactionBuilder onSimulationRun={() => setActiveTab("results")} />
+                {transactionMode === 'basic' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="Basic Transaction Builder"
+                      description="Create and simulate simple transactions on the Aptos blockchain"
+                      icon={Code}
+                    />
+                    <TransactionBuilder onSimulationRun={() => setActiveTab("results")} />
+                  </div>
+                )}
+
+                {transactionMode === 'batch' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="Batch Transaction Builder"
+                      description="Create and simulate multiple transactions with automatic dependency analysis and optimization"
+                      icon={Layers}
+                    />
+                    <BatchTransactionBuilder onResults={setVmAnalysisResult} />
+                  </div>
+                )}
+
+                {transactionMode === 'sponsored' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="Sponsored Transaction Builder"
+                      description="Create transactions where a sponsor pays the gas fees, enabling gasless user experiences"
+                      icon={UserCheck}
+                    />
+                    <SponsoredTransactionBuilder onResults={setVmAnalysisResult} />
+                  </div>
+                )}
+
+                {transactionMode === 'state-fork' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="State Fork Management"
+                      description="Create, modify, and manage blockchain state forks for 'what-if' scenario testing"
+                      icon={GitBranch}
+                    />
+                    <StateForkManager />
+                  </div>
+                )}
+
+                {transactionMode === 'vm-visualization' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="VM Execution Visualization"
+                      description="Detailed Move VM instruction-level analysis with gas usage patterns and execution traces"
+                      icon={Activity}
+                    />
+                    <VMExecutionVisualization 
+                      simulationResult={getLatestResult() || vmAnalysisResult}
+                      onAnalysisComplete={setVmAnalysisResult}
+                    />
+                  </div>
+                )}
+
+                {transactionMode === 'gas-optimizer' && (
+                  <div className="space-y-6">
+                    <FeatureHeader
+                      title="Gas Optimizer"
+                      description="AI-powered analysis to identify and apply gas optimization opportunities"
+                      icon={Zap}
+                    />
+                    <GasOptimizer
+                      transactionData={transactionData}
+                      simulationResult={getLatestResult() || vmAnalysisResult}
+                      onOptimize={(optimizations) => {
+                        console.log('Applying optimizations:', optimizations);
+                      }}
+                    />
+                  </div>
+                )}
               </ClientOnly>
             </TabsContent>
             
@@ -113,5 +272,25 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+interface FeatureHeaderProps {
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+}
+
+function FeatureHeader({ title, description, icon: Icon }: FeatureHeaderProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="h-5 w-5" />
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+    </Card>
   );
 }
