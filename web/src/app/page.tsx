@@ -270,7 +270,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         <div className="vscode-card">
-                          <BatchTransactionBuilder onResults={setVmAnalysisResult} />
+                          <BatchTransactionBuilder onResults={setVmAnalysisResult} onSimulationRun={() => setActiveTab("results")} />
                         </div>
                       </div>
                     )}

@@ -12,16 +12,18 @@ import { Plus, Trash2, Play, ArrowRight, Shuffle, FileText, AlertCircle } from '
 import { TransactionData } from '@/types/aptos';
 import { EntryFunction } from '@aptos-labs/ts-sdk';
 import { batchTransactionSimulator } from '@/lib/batch-simulator';
+import { useSimulationStore } from '@/stores/simulationStore';
 
 interface BatchTransactionBuilderProps {
   onResults?: (results: any) => void;
+  onSimulationRun?: () => void;
 }
 
-export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderProps) {
+export function BatchTransactionBuilder({ onResults, onSimulationRun }: BatchTransactionBuilderProps) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [executeSequentially, setExecuteSequentially] = useState(true);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [results, setResults] = useState<any>(null);
+  const { setResult, setStatus, addToHistory } = useSimulationStore();
 
   const addTransaction = () => {
     const newTransaction = {
@@ -52,6 +54,8 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
     if (transactions.length === 0) return;
 
     setIsSimulating(true);
+    setStatus('simulating');
+    onSimulationRun?.();
     try {
       const batchData = {
         type: 'batch' as const,
@@ -60,7 +64,23 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
       };
 
       const result = await batchTransactionSimulator.simulateBatch(batchData);
-      setResults(result);
+      
+      // Transform batch result to match SimulationResult format
+      const simulationResult = {
+        ...result, // Spread the result as it extends SimulationResult
+        timestamp: Date.now(),
+        // Add batch-specific data
+        batchData: {
+          type: 'batch',
+          individualResults: result.individualResults || [],
+          dependencies: result.dependencies || [],
+          executeSequentially
+        }
+      };
+      
+      setResult(simulationResult);
+      setStatus('success');
+      addToHistory(simulationResult);
       onResults?.(result);
     } catch (error: any) {
       console.error('Batch simulation failed:', error);
@@ -68,6 +88,13 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
       // Create a detailed error result
       const errorResult = {
         success: false,
+        gasUsed: 0,
+        gasUnitPrice: 100,
+        totalGasCost: 0,
+        totalGasCostAPT: 0,
+        vmStatus: 'FAILED',
+        executionTime: 0,
+        timestamp: Date.now(),
         error: {
           message: error.message || 'Batch simulation failed',
           details: error.details || 'An unexpected error occurred during batch simulation',
@@ -75,27 +102,29 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
           transactionIndex: error.transactionIndex,
           code: error.code || 'BATCH_SIMULATION_ERROR'
         },
-        gasUsed: 0,
-        totalGasCostAPT: 0,
-        executionTime: 0,
-        individualResults: transactions.map((tx, index) => ({
-          success: false,
-          gasUsed: 0,
-          vmStatus: 'FAILED',
-          error: {
-            message: error.message || 'Transaction failed',
-            details: error.details || 'Unable to simulate this transaction'
-          }
-        })),
-        dependencies: []
+        batchData: {
+          type: 'batch',
+          individualResults: transactions.map(() => ({
+            success: false,
+            gasUsed: 0,
+            vmStatus: 'FAILED',
+            error: {
+              message: error.message || 'Transaction failed',
+              details: error.details || 'Unable to simulate this transaction'
+            }
+          })),
+          dependencies: [],
+          executeSequentially
+        }
       };
       
-      setResults(errorResult);
+      setResult(errorResult);
+      setStatus('error');
       onResults?.(errorResult);
     } finally {
       setIsSimulating(false);
     }
-  };
+  };;
 
   const optimizeOrder = () => {
     // Simple optimization: sort by estimated gas usage
@@ -237,8 +266,6 @@ export function BatchTransactionBuilder({ onResults }: BatchTransactionBuilderPr
         </CardContent>
       </Card>
 
-      {/* Results */}
-      {results && <BatchResultsDisplay results={results} />}
     </div>
   );
 }
@@ -327,166 +354,6 @@ function TransactionCard({ transaction, index, onUpdate, onRemove }: Transaction
             className="text-sm"
           />
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface BatchResultsDisplayProps {
-  results: any;
-}
-
-function BatchResultsDisplay({ results }: BatchResultsDisplayProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Badge variant={results.success ? "default" : "destructive"}>
-            {results.success ? 'Success' : 'Failed'}
-          </Badge>
-          Batch Simulation Results
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="individual">Individual Results</TabsTrigger>
-            <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            {/* Error Display */}
-            {!results.success && results.error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <div className="font-medium">Batch Simulation Failed</div>
-                    <div className="text-sm">
-                      <strong>Error:</strong> {results.error.message || 'Unknown error occurred'}
-                    </div>
-                    {results.error.details && (
-                      <div className="text-sm">
-                        <strong>Details:</strong> {results.error.details}
-                      </div>
-                    )}
-                    {results.error.suggestion && (
-                      <div className="text-sm">
-                        <strong>Suggestion:</strong> {results.error.suggestion}
-                      </div>
-                    )}
-                    {results.error.transactionIndex !== undefined && (
-                      <div className="text-sm">
-                        <strong>Failed Transaction:</strong> #{results.error.transactionIndex + 1}
-                      </div>
-                    )}
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Total Gas Used</h4>
-                <p className="text-2xl font-bold">{results.gasUsed?.toLocaleString() || '0'}</p>
-                <p className="text-sm text-muted-foreground">
-                  {(results.totalGasCostAPT || 0).toFixed(6)} APT
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium">Execution Time</h4>
-                <p className="text-2xl font-bold">{results.executionTime || '0'}ms</p>
-                {results.parallelExecutionSavings && (
-                  <p className="text-sm text-green-600">
-                    ~{results.parallelExecutionSavings} gas saved from parallelization
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Summary Statistics */}
-            {results.individualResults && (
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">
-                    {results.individualResults.filter((r: any) => r.success).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Successful</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-red-600">
-                    {results.individualResults.filter((r: any) => !r.success).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Failed</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold">
-                    {results.individualResults.length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total</div>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="individual" className="space-y-3">
-            {results.individualResults?.map((result: any, index: number) => (
-              <div key={index} className="p-3 border rounded-md">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Transaction #{index + 1}</span>
-                  <Badge variant={result.success ? "default" : "destructive"}>
-                    {result.success ? 'Success' : 'Failed'}
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Gas: {result.gasUsed || 0} | Status: {result.vmStatus || 'Unknown'}
-                </div>
-                
-                {/* Error Details for Failed Transactions */}
-                {!result.success && result.error && (
-                  <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-800 rounded">
-                    <div className="text-sm">
-                      <div className="font-medium text-red-800 dark:text-red-200 mb-1">
-                        Error Details:
-                      </div>
-                      <div className="text-red-700 dark:text-red-300">
-                        {result.error.message || result.error}
-                      </div>
-                      {result.error.suggestion && (
-                        <div className="mt-1 text-xs text-red-600 dark:text-red-400">
-                          <strong>Suggestion:</strong> {result.error.suggestion}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="dependencies" className="space-y-3">
-            {results.dependencies?.length > 0 ? (
-              results.dependencies.map((dep: any, index: number) => (
-                <div key={index} className="p-3 border rounded-md">
-                  <div className="flex items-center gap-2">
-                    <span>Transaction #{dep.fromTransaction + 1}</span>
-                    <ArrowRight className="h-4 w-4" />
-                    <span>Transaction #{dep.toTransaction + 1}</span>
-                    <Badge variant="outline">{dep.dependencyType}</Badge>
-                    <Badge variant={dep.conflictRisk === 'high' ? 'destructive' : 'secondary'}>
-                      {dep.conflictRisk} risk
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                No dependencies detected between transactions
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
       </CardContent>
     </Card>
   );

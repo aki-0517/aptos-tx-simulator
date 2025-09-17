@@ -143,11 +143,41 @@ export function SimulationResults() {
   );
 
   function renderOverviewTab() {
+    // Check if this is a batch transaction result
+    const isBatchResult = result && (result as any).batchData;
+    
     return (
       <div className="space-y-4">
+        {/* Batch Summary (if batch result) */}
+        {isBatchResult && (
+          <div className="bg-card border border-border rounded p-4">
+            <h4 className="font-semibold mb-3">Batch Transaction Summary</h4>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-lg font-bold text-green-600">
+                  {(result as any).batchData.individualResults.filter((r: any) => r.success).length}
+                </div>
+                <div className="text-sm text-muted-foreground">Successful</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-red-600">
+                  {(result as any).batchData.individualResults.filter((r: any) => !r.success).length}
+                </div>
+                <div className="text-sm text-muted-foreground">Failed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {(result as any).batchData.individualResults.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Total</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Gas Information Summary */}
         <div className="bg-card border border-border rounded p-4">
-          <h4 className="font-semibold mb-3">Gas Summary</h4>
+          <h4 className="font-semibold mb-3">{isBatchResult ? 'Total Gas Summary' : 'Gas Summary'}</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Gas Used</p>
@@ -167,6 +197,61 @@ export function SimulationResults() {
             </div>
           </div>
         </div>
+
+        {/* Individual Transaction Results (if batch) */}
+        {isBatchResult && (
+          <div className="bg-card border border-border rounded p-4">
+            <h4 className="font-semibold mb-3">Individual Transaction Results</h4>
+            <div className="space-y-3">
+              {(result as any).batchData.individualResults.map((txResult: any, index: number) => (
+                <div key={index} className="p-3 border rounded-md">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Transaction #{index + 1}</span>
+                    <div className={`px-2 py-1 rounded text-xs font-medium ${
+                      txResult.success 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {txResult.success ? 'Success' : 'Failed'}
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Gas: {txResult.gasUsed || 0} | Status: {txResult.vmStatus || 'Unknown'}
+                  </div>
+                  {!txResult.success && txResult.error && (
+                    <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/10 border border-red-200 dark:border-red-800 rounded">
+                      <div className="text-sm text-red-700 dark:text-red-300">
+                        {txResult.error.message || txResult.error}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Dependencies (if batch) */}
+        {isBatchResult && (result as any).batchData.dependencies?.length > 0 && (
+          <div className="bg-card border border-border rounded p-4">
+            <h4 className="font-semibold mb-3">Transaction Dependencies</h4>
+            <div className="space-y-2">
+              {(result as any).batchData.dependencies.map((dep: any, index: number) => (
+                <div key={index} className="flex items-center gap-2 text-sm">
+                  <span>Transaction #{dep.fromTransaction + 1}</span>
+                  <span>→</span>
+                  <span>Transaction #{dep.toTransaction + 1}</span>
+                  <span className="px-2 py-1 bg-muted rounded text-xs">{dep.dependencyType}</span>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    dep.conflictRisk === 'high' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {dep.conflictRisk} risk
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Error Details */}
         {result?.error && (

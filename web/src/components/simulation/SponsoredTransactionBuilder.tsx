@@ -100,7 +100,7 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
   const formatBalance = (balance: number) => (balance / 100000000).toFixed(6);
 
   const loadExample = () => {
-    const senderAddr = '0x1d8722f9c5393155f17851c9e39557cda785421e0db9c5ba4b2f674a7e35c6ef';
+    const senderAddr = '0xddab2c9c082b121333038b86b2aff5e917b12901bc1ce7ea49b4fc579504f0d0';
     const recipient = '0x' + '2'.repeat(64);
     const sponsor = '0x' + '3'.repeat(64);
 
