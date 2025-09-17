@@ -38,14 +38,12 @@ export interface TransactionData {
 }
 
 // Advanced Transaction Types
-export interface ScriptTransactionData {
+export interface ScriptTransactionData extends TransactionData {
   type: 'script';
-  sender: string;
+  payload: TransactionPayloadScript;
   code: string; // Move bytecode
   typeArgs?: string[];
   functionArgs?: any[];
-  maxGasAmount?: number;
-  gasUnitPrice?: number;
 }
 
 export interface BatchTransactionData {

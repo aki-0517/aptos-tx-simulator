@@ -61,6 +61,11 @@ export class TransactionSimulator {
       const simulationResult = await aptos.transaction.simulate.simple({
         signerPublicKey,
         transaction,
+        options: {
+          estimateGasUnitPrice: true,
+          estimateMaxGasAmount: true,
+          estimatePrioritizedGasUnitPrice: true,
+        },
       });
 
       const executionTime = performance.now() - startTime;
@@ -90,6 +95,13 @@ export class TransactionSimulator {
 
   async estimateGas(transactionData: TransactionData): Promise<GasEstimation> {
     try {
+      const aptos = aptosClient.getCurrentClient();
+      
+      // Get real-time gas price estimation from Aptos network
+      const gasPriceEstimation = await aptos.getGasPriceEstimation();
+      console.log('Real-time gas price estimation:', gasPriceEstimation);
+      
+      // Run simulation to get gas usage
       const simulationResult = await this.simulateTransaction(transactionData);
       
       if (!simulationResult.success) {
@@ -97,7 +109,7 @@ export class TransactionSimulator {
       }
 
       const gasUsed = simulationResult.gasUsed;
-      const gasUnitPrice = simulationResult.gasUnitPrice;
+      const gasUnitPrice = gasPriceEstimation.gas_estimate;
       const maxGasAmount = Math.ceil(gasUsed * 1.2); // Add 20% buffer
       const totalCost = gasUsed * gasUnitPrice;
       const totalCostAPT = totalCost / 100000000;
@@ -224,6 +236,11 @@ export class TransactionSimulator {
       const simulationResult = await aptos.transaction.simulate.simple({
         signerPublicKey,
         transaction,
+        options: {
+          estimateGasUnitPrice: true,
+          estimateMaxGasAmount: true,
+          estimatePrioritizedGasUnitPrice: true,
+        },
       });
 
       const executionTime = performance.now() - startTime;
@@ -425,16 +442,24 @@ export class TransactionSimulator {
 
     try {
       // Generate gas breakdown
+      console.log('Generating gas breakdown for simulation result:', simulationResult);
       const gasBreakdown = gasBreakdownGenerator.generateFromSimulation(simulationResult);
       simulationResult.gasBreakdown = gasBreakdown;
+      console.log('Gas breakdown generated:', gasBreakdown);
 
       // Generate execution trace if transaction data is available
       if (transactionData) {
+        console.log('Generating execution trace for transaction data:', transactionData);
         const trace = await traceSimulator.simulateWithTrace(transactionData, simulationResult);
         simulationResult.trace = trace;
+        console.log('Execution trace generated:', trace);
       }
     } catch (error) {
-      console.warn('Failed to generate extended analysis:', error);
+      console.error('Failed to generate extended analysis:', error);
+      // Add error details for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
       // Continue without extended analysis
     }
     
