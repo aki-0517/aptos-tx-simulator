@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +17,7 @@ import {
   ArrowDown,
   ArrowUp,
   BarChart3,
-  Lightbulb,
-  FileText
+  Lightbulb
 } from 'lucide-react';
 import { TransactionData } from '@/types/aptos';
 import { SimulationResult } from '@/types/simulation';
@@ -51,62 +50,13 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
     }
   };
 
-  const loadExampleOptimizations = async () => {
-    setIsOptimizing(true);
-    try {
-      // Simulate loading example optimizations
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const exampleOptimizations: GasOptimization[] = [
-        {
-          id: 'gas-price-example',
-          title: 'Optimize Gas Unit Price',
-          description: 'Reduce gas unit price from 150 to 120 for better cost efficiency',
-          category: 'pricing',
-          impact: 'medium',
-          complexity: 'low',
-          gasSavings: 15000,
-          implementation: 'Set gasUnitPrice to 120 for optimal cost-speed balance'
-        },
-        {
-          id: 'batch-storage-example',
-          title: 'Batch Storage Operations',
-          description: 'Combine multiple storage writes into fewer operations',
-          category: 'storage',
-          impact: 'high',
-          complexity: 'medium',
-          gasSavings: 25000,
-          implementation: 'Refactor code to batch resource modifications'
-        },
-        {
-          id: 'max-gas-example',
-          title: 'Optimize Max Gas Amount',
-          description: 'Set max gas closer to actual usage to avoid over-allocation',
-          category: 'allocation',
-          impact: 'low',
-          complexity: 'low',
-          gasSavings: 8000,
-          implementation: 'Set maxGasAmount to 85000 based on simulation results'
-        },
-        {
-          id: 'event-optimization-example',
-          title: 'Reduce Event Emissions',
-          description: 'Eliminate unnecessary event emissions',
-          category: 'events',
-          impact: 'medium',
-          complexity: 'medium',
-          gasSavings: 12000,
-          implementation: 'Remove non-essential events from transaction'
-        }
-      ];
-      
-      setOptimizations(exampleOptimizations);
-    } catch (error) {
-      console.error('Failed to load example optimizations:', error);
-    } finally {
-      setIsOptimizing(false);
+  // Automatically run optimization analysis when simulationResult is available
+  useEffect(() => {
+    if (simulationResult && simulationResult.gasUsed !== undefined && optimizations.length === 0) {
+      runOptimization();
     }
-  };
+  }, [simulationResult, optimizations.length]);
+
 
   const applyOptimizations = () => {
     const selectedOpts = optimizations.filter(opt => selectedOptimizations.has(opt.id));
@@ -166,41 +116,13 @@ export function GasOptimizer({ transactionData, simulationResult, onOptimize }: 
             )}
 
             {/* Optimization Controls */}
-            <div className="flex justify-between items-center">
-              <div className="flex gap-2">
-                <Button onClick={loadExampleOptimizations} disabled={isOptimizing}>
-                  {isOptimizing ? (
-                    <>
-                      <Settings className="h-4 w-4 mr-2 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Load Example
-                    </>
-                  )}
-                </Button>
-                <Button onClick={runOptimization} disabled={isOptimizing || !simulationResult}>
-                  {isOptimizing ? (
-                    <>
-                      <Settings className="h-4 w-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Target className="h-4 w-4 mr-2" />
-                      Analyze Gas Optimizations
-                    </>
-                  )}
-                </Button>
-              </div>
-              {optimizations.length > 0 && (
+            {optimizations.length > 0 && (
+              <div className="flex justify-end">
                 <Button onClick={applyOptimizations} disabled={selectedOptimizations.size === 0}>
                   Apply Selected ({selectedOptimizations.size})
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Optimization Progress */}
             {isOptimizing && (
