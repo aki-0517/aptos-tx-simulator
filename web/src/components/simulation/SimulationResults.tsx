@@ -75,12 +75,12 @@ export function SimulationResults() {
       icon: Activity,
       available: !!result 
     },
-    { 
-      key: 'optimizer', 
-      label: 'Gas Optimizer', 
-      icon: Zap,
-      available: !!result 
-    },
+    // { 
+    //   key: 'optimizer', 
+    //   label: 'Gas Optimizer', 
+    //   icon: Zap,
+    //   available: !!result 
+    // },
   ];
 
   return (

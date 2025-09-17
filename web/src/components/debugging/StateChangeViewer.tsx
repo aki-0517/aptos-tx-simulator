@@ -44,6 +44,24 @@ export function StateChangeViewer({ changes, events, stateAnalysis }: StateChang
     }
   };
 
+  const formatGuidValue = (guid: any): string => {
+    try {
+      if (guid == null) return '';
+      if (typeof guid === 'string') return guid;
+      if (typeof guid === 'object') {
+        const account = (guid as any).account_address ?? (guid as any).accountAddress;
+        const creation = (guid as any).creation_number ?? (guid as any).creationNumber ?? (guid as any).creation;
+        if (account !== undefined && creation !== undefined) {
+          return `${account}::${creation}`;
+        }
+        return JSON.stringify(guid);
+      }
+      return String(guid);
+    } catch {
+      return String(guid);
+    }
+  };
+
   const renderChanges = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -155,7 +173,7 @@ export function StateChangeViewer({ changes, events, stateAnalysis }: StateChang
                 <div>
                   <strong className="text-sm text-foreground">GUID:</strong>
                   <code className="ml-2 text-sm bg-muted px-2 py-1 rounded vscode-font">
-                    {event.guid}
+                    {formatGuidValue(event.guid)}
                   </code>
                 </div>
 
