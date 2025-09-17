@@ -1,75 +1,57 @@
-# Archived Documentation - Completed Features
+# Aptos Transaction Simulator - Remaining Implementation Tasks
 
-This directory contains documentation for features that have been successfully implemented in the MVP.
+## Current Status
+✅ **MVP is Complete and Functional**
+- Core transaction simulation working
+- Wallet integration (Petra) implemented
+- Basic UI with tab navigation
+- Gas estimation and error handling
+- Network switching (Devnet/Testnet)
 
-## ✅ Completed Implementation Documents
+## Remaining Documentation (Future Enhancements)
 
-### Core MVP Features
-- `mvp-requirements.md` - MVP requirements specification ✅
-- `mvp-development-todos.md` - Development task list ✅  
-- `mvp-development-plan.md` - Development timeline ✅
-- `comprehensive-implementation-plan.md` - Full implementation strategy ✅
+### 🔄 Core System Improvements
+- `requirements.md` - General requirements documentation
+- `api-specification.md` - API specifications for future features
 
-### Technical Integration
-- `wallet-integration-guide.md` - Petra wallet connection ✅
-- `aptos-sdk-guide.md` - Aptos SDK integration ✅
-- `transaction-simulation-guide.md` - Transaction simulation engine ✅
-- `implementation-api-guide.md` - API implementation patterns ✅
+### 🚀 Advanced Features (Not Yet Implemented)
+- `advanced-features-requirements.md` - Specifications for advanced functionality
+- `advanced-features-implementation.md` - Implementation guide for advanced features
+- `state-fork-implementation.md` - State forking and blockchain state management
+- `transaction-types-implementation.md` - Support for complex transaction types
+- `vm-execution-visualization-implementation.md` - Move VM execution visualization
+- `gas-optimization-implementation.md` - Advanced gas optimization features
+- `ui-ux-improvements-implementation.md` - Enhanced user experience features
 
-### System Architecture  
-- `architecture.md` - System architecture documentation ✅
-- `aptos-api-reference.md` - Aptos API reference ✅
+### 📁 Archive Folder
+The `archive/` directory contains completed implementation documentation:
+- MVP requirements and development plans
+- Wallet integration guides
+- SDK integration guides
+- Architecture documentation
+- API reference materials
 
-### Design & Styling
-- `color-palette.md` - UI color scheme and theming ✅
+## Implementation Priority
 
-## Implementation Summary
+### High Priority (Next Phase)
+1. **Advanced Transaction Types** - Multi-sig, sponsored transactions
+2. **State Forking** - Advanced state management and visualization
+3. **Gas Optimization** - Intelligent gas price suggestions
 
-### What Was Built
-1. **🏗️ Project Foundation**
-   - Next.js 15 with TypeScript
-   - shadcn/ui component system
-   - Tailwind CSS styling
-   - Zustand state management
+### Medium Priority
+1. **VM Execution Visualization** - Detailed execution traces
+2. **UI/UX Improvements** - Enhanced user interface
+3. **Advanced Error Analysis** - Deeper transaction failure analysis
 
-2. **🔗 Blockchain Integration**
-   - Aptos SDK integration with network switching
-   - Transaction simulation engine
-   - Gas estimation and cost calculation
-   - Error analysis and user-friendly messaging
+### Low Priority
+1. **API Specification** - External API for integration
+2. **Advanced Features** - Enterprise-level functionality
 
-3. **💰 Wallet Integration**
-   - Petra wallet connection
-   - Account balance display
-   - Network switching (Devnet/Testnet)
-   - Transaction signing preparation
-
-4. **🎨 User Interface**
-   - Tab-based navigation (Create Transaction / Simulation Results)
-   - Responsive transaction builder form
-   - Comprehensive simulation results display
-   - Real-time validation and error handling
-
-5. **📊 Core Features**
-   - Entry function transaction simulation
-   - Gas usage calculation and APT conversion
-   - Transaction history tracking
-   - Network status monitoring
-
-### Development Timeline
-- **Week 1-2**: Project setup and foundation ✅
-- **Week 3-4**: Core simulation engine ✅  
-- **Week 5-6**: Wallet integration and UI ✅
-- **Week 7**: Testing and refinement ✅
-
-### Current Status
-The MVP is **fully functional** and deployable with all core requirements met:
-- ✅ Transaction simulation accuracy >95%
-- ✅ Response time <3 seconds  
-- ✅ Petra wallet integration
-- ✅ Network switching capability
-- ✅ Comprehensive error handling
-- ✅ User-friendly interface
+## Getting Started with Remaining Features
+1. Review the specific implementation document for the feature you want to build
+2. Check current MVP codebase for integration points
+3. Follow the existing patterns established in the working MVP
+4. Test thoroughly with the existing simulation infrastructure
 
 ---
-**All documentation in this archive represents completed, working functionality in the current codebase.**
+**Note**: The MVP is production-ready. These remaining features are enhancements for a more comprehensive transaction simulation platform.
