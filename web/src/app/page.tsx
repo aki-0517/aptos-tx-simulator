@@ -10,11 +10,8 @@ import { useSimulation } from '@/hooks/useSimulation';
 import { BatchTransactionBuilder } from '@/components/simulation/BatchTransactionBuilder';
 import { SponsoredTransactionBuilder } from '@/components/simulation/SponsoredTransactionBuilder';
 import { StateForkManager } from '@/components/advanced/StateForkManager';
-import { VMExecutionVisualization } from '@/components/advanced/VMExecutionVisualization';
-import { GasOptimizer } from '@/components/advanced/GasOptimizer';
 import { 
   Activity, 
-  Zap, 
   Code,
   Layers,
   UserCheck,
@@ -65,20 +62,6 @@ export default function HomePage() {
       description: 'Create and manage blockchain state forks for testing',
       icon: GitBranch,
       status: 'stable'
-    },
-    {
-      id: 'vm-visualization',
-      name: 'VM Execution Visualization',
-      description: 'Detailed analysis of Move VM instruction execution',
-      icon: Activity,
-      status: 'beta'
-    },
-    {
-      id: 'gas-optimizer',
-      name: 'Gas Optimizer',
-      description: 'AI-powered gas optimization with efficiency recommendations',
-      icon: Zap,
-      status: 'stable'
     }
   ];
 
@@ -102,14 +85,6 @@ export default function HomePage() {
           <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'state-fork' ? 'bg-accent' : 'hover:bg-muted'}`}
                onClick={() => setTransactionMode('state-fork')}>
             <GitBranch className="h-4 w-4" />
-          </div>
-          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'vm-visualization' ? 'bg-accent' : 'hover:bg-muted'}`}
-               onClick={() => setTransactionMode('vm-visualization')}>
-            <Activity className="h-4 w-4" />
-          </div>
-          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'gas-optimizer' ? 'bg-accent' : 'hover:bg-muted'}`}
-               onClick={() => setTransactionMode('gas-optimizer')}>
-            <Zap className="h-4 w-4" />
           </div>
         </div>
         
@@ -309,48 +284,6 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {transactionMode === 'vm-visualization' && (
-                      <div className="space-y-4">
-                        <div className="border-b border-border pb-2">
-                          <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <Activity className="h-5 w-5" />
-                            VM Execution Visualization
-                          </h2>
-                          <p className="text-sm text-muted-foreground">
-                            Detailed Move VM instruction-level analysis
-                          </p>
-                        </div>
-                        <div className="vscode-card">
-                          <VMExecutionVisualization 
-                            simulationResult={getLatestResult() || vmAnalysisResult}
-                            onAnalysisComplete={setVmAnalysisResult}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {transactionMode === 'gas-optimizer' && (
-                      <div className="space-y-4">
-                        <div className="border-b border-border pb-2">
-                          <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <Zap className="h-5 w-5" />
-                            Gas Optimizer
-                          </h2>
-                          <p className="text-sm text-muted-foreground">
-                            AI-powered gas optimization with efficiency recommendations
-                          </p>
-                        </div>
-                        <div className="vscode-card">
-                          <GasOptimizer
-                            transactionData={transactionData}
-                            simulationResult={getLatestResult() || vmAnalysisResult}
-                            onOptimize={(optimizations) => {
-                              console.log('Applying optimizations:', optimizations);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
                   </ClientOnly>
                 </div>
               )}

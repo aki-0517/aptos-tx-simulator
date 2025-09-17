@@ -4,16 +4,18 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import { formatAPT, formatGas, formatNumber } from '@/lib/utils';
-import { CheckCircle, XCircle, Clock, AlertTriangle, Copy, ExternalLink, BarChart3, Activity, GitBranch } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertTriangle, Copy, ExternalLink, BarChart3, Activity, GitBranch, Zap } from 'lucide-react';
 import { useAptosClient } from '@/hooks/useAptosClient';
 import { GasBreakdownChart } from './GasBreakdownChart';
 import { TraceViewer } from '../debugging/TraceViewer';
 import { StateChangeViewer } from '../debugging/StateChangeViewer';
+import { VMExecutionVisualization } from '../advanced/VMExecutionVisualization';
+import { GasOptimizer } from '../advanced/GasOptimizer';
 
 export function SimulationResults() {
   const { result, status, isSimulating, isSuccess, isError, hasResult } = useSimulation();
   const { getExplorerUrl } = useAptosClient();
-  const [activeTab, setActiveTab] = useState<'overview' | 'gas' | 'trace' | 'state'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'gas' | 'trace' | 'state' | 'vm-execution' | 'optimizer'>('overview');
 
   if (isSimulating) {
     return (
@@ -66,6 +68,18 @@ export function SimulationResults() {
       label: 'State Changes', 
       icon: GitBranch,
       available: !!(result?.changes?.length || result?.events?.length) 
+    },
+    { 
+      key: 'vm-execution', 
+      label: 'VM Execution', 
+      icon: Activity,
+      available: !!result 
+    },
+    { 
+      key: 'optimizer', 
+      label: 'Gas Optimizer', 
+      icon: Zap,
+      available: !!result 
     },
   ];
 
@@ -137,6 +151,8 @@ export function SimulationResults() {
           {activeTab === 'gas' && renderGasTab()}
           {activeTab === 'trace' && renderTraceTab()}
           {activeTab === 'state' && renderStateTab()}
+          {activeTab === 'vm-execution' && renderVMExecutionTab()}
+          {activeTab === 'optimizer' && renderOptimizerTab()}
         </div>
       </div>
     </div>
@@ -404,6 +420,39 @@ export function SimulationResults() {
         changes={result?.changes || []}
         events={result?.events || []}
         stateAnalysis={result?.stateAnalysis}
+      />
+    );
+  }
+
+  function renderVMExecutionTab() {
+    if (!result) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          VM execution visualization not available
+        </div>
+      );
+    }
+
+    return (
+      <VMExecutionVisualization 
+        simulationResult={result}
+      />
+    );
+  }
+
+  function renderOptimizerTab() {
+    if (!result) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          Gas optimizer not available
+        </div>
+      );
+    }
+
+    return (
+      <GasOptimizer 
+        transactionData={{}}
+        simulationResult={result}
       />
     );
   }
