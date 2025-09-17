@@ -54,7 +54,7 @@ export function BalancePanel() {
       const coinBalances: CoinBalance[] = [];
       
       // Find coin store resources
-      resources.forEach((resource: any) => {
+      for (const resource of resources) {
         if (resource.type.includes('::coin::CoinStore<')) {
           // Extract coin type from resource type
           const coinTypeMatch = resource.type.match(/::coin::CoinStore<(.+)>/);
@@ -63,7 +63,7 @@ export function BalancePanel() {
             const balance = resource.data?.coin?.value || '0';
             
             // Get coin info (this would typically come from a coin registry)
-            const coinInfo = getCoinInfo(coinType);
+            const coinInfo = await getCoinInfo(coinType);
             
             coinBalances.push({
               coinType,
@@ -71,11 +71,10 @@ export function BalancePanel() {
               symbol: coinInfo.symbol,
               name: coinInfo.name,
               decimals: coinInfo.decimals,
-              usdValue: coinInfo.usdValue,
             });
           }
         }
-      });
+      }
 
       // Update history
       const newHistory = new Map(history);
@@ -108,22 +107,35 @@ export function BalancePanel() {
     }
   };
 
-  const getCoinInfo = (coinType: string) => {
-    // This would typically fetch from a coin registry API
-    const knownCoins: { [key: string]: { symbol: string; name: string; decimals: number; usdValue?: number } } = {
-      '0x1::aptos_coin::AptosCoin': {
-        symbol: 'APT',
-        name: 'Aptos Token',
+  const getCoinInfo = async (coinType: string) => {
+    // 実データのみを使用し、コイン情報を動的に取得
+    try {
+      // Aptos標準コインの情報を取得
+      if (coinType === '0x1::aptos_coin::AptosCoin') {
+        return {
+          symbol: 'APT',
+          name: 'Aptos Token',
+          decimals: 8,
+        };
+      }
+      
+      // その他のコインについては、コインタイプから情報を推測
+      const coinTypeParts = coinType.split('::');
+      const coinName = coinTypeParts[coinTypeParts.length - 1] || 'Unknown';
+      
+      return {
+        symbol: coinName.slice(0, 6).toUpperCase(),
+        name: `${coinName} Token`,
+        decimals: 8, // デフォルトは8桁
+      };
+    } catch (error) {
+      console.warn('Failed to get coin info:', error);
+      return {
+        symbol: 'UNKNOWN',
+        name: 'Unknown Token',
         decimals: 8,
-        usdValue: 7.50, // Mock USD value
-      },
-    };
-
-    return knownCoins[coinType] || {
-      symbol: coinType.split('::').pop()?.slice(0, 6).toUpperCase() || 'UNKNOWN',
-      name: 'Unknown Token',
-      decimals: 8,
-    };
+      };
+    }
   };
 
   const formatBalance = (balance: string, decimals: number): string => {

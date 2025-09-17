@@ -1,6 +1,7 @@
 import { networkMonitor, NetworkState } from './network-monitor';
 import { TransactionData, SimulationResult } from '@/types';
 import { transactionSimulator } from './simulator';
+import { aptosClient } from './aptos-client';
 
 export interface GasOptimizationSuggestion {
   currentSettings: {
@@ -51,7 +52,7 @@ class GasOptimizer {
       potentialSavings: this.calculateSavings(analysis),
       optimizationStrategies: await this.generateOptimizationStrategies(analysis),
       alternativeApproaches: await this.suggestAlternatives(transactionData),
-      priceRecommendations: this.getPriceRecommendations(),
+      priceRecommendations: await this.getPriceRecommendations(),
       riskAssessment: this.assessOptimizationRisk(analysis),
     };
   }
@@ -248,14 +249,43 @@ class GasOptimizer {
     return alternatives;
   }
 
-  private getPriceRecommendations() {
-    // This would integrate with real-time network data
-    return {
-      immediate: { price: 150, confidence: 'high', waitTime: '< 1 min' },
-      fast: { price: 120, confidence: 'high', waitTime: '1-3 min' },
-      standard: { price: 100, confidence: 'medium', waitTime: '3-5 min' },
-      slow: { price: 80, confidence: 'low', waitTime: '5-10 min' },
-    };
+  private async getPriceRecommendations() {
+    // 実データのみを使用し、Aptos APIから直接取得
+    try {
+      const client = aptosClient.getCurrentClient();
+      const gasEstimateResponse = await fetch(`${client.config.fullnode}/estimate_gas_price`);
+      
+      if (!gasEstimateResponse.ok) {
+        throw new Error('Failed to fetch gas price estimates from Aptos API');
+      }
+      
+      const gasData = await gasEstimateResponse.json();
+      
+      return {
+        immediate: { 
+          price: gasData.prioritized_gas_estimate || gasData.gas_estimate, 
+          confidence: 'high', 
+          waitTime: '< 1 min' 
+        },
+        fast: { 
+          price: gasData.gas_estimate, 
+          confidence: 'high', 
+          waitTime: '1-3 min' 
+        },
+        standard: { 
+          price: gasData.gas_estimate, 
+          confidence: 'medium', 
+          waitTime: '3-5 min' 
+        },
+        slow: { 
+          price: gasData.deprioritized_gas_estimate || gasData.gas_estimate, 
+          confidence: 'low', 
+          waitTime: '5-10 min' 
+        },
+      };
+    } catch (error) {
+      throw new Error(`Unable to get real-time gas price recommendations: ${error.message}`);
+    }
   }
 
   private assessOptimizationRisk(analysis: any) {

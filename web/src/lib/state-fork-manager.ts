@@ -331,10 +331,10 @@ class StateForkManager {
   private async getCurrentBlockHeight(): Promise<number> {
     try {
       const ledgerInfo = await aptosClient.getCurrentClient().getLedgerInfo();
-      return parseInt(ledgerInfo.block_height);
+      return parseInt(ledgerInfo.ledger_version);
     } catch (error) {
-      console.warn('Failed to get current block height, using 0');
-      return 0;
+      console.warn('Failed to get current block height:', error);
+      throw new Error('Unable to get current block height. Please check network connection.');
     }
   }
 

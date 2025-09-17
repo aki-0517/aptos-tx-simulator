@@ -2,7 +2,39 @@
 
 Use bun for package manager
 
-Do not use any mock data.
+## CRITICAL REQUIREMENT: NO MOCK DATA
+
+**MUST REQUIREMENT**: Do not use any mock data, dummy data, fake data, or sample data in this project. All data displayed and used must be real data from actual Aptos blockchain networks or user inputs.
+
+### What is prohibited:
+- Mock USD prices for tokens
+- Dummy account keys or addresses
+- Fake gas price estimates
+- Sample transaction data
+- Randomly generated values for display
+- Hardcoded example data
+- Simulated network conditions
+- Placeholder values in production code
+
+### What is required:
+- Real wallet connections only
+- Actual blockchain data from Aptos networks
+- Live gas price data from network APIs (using `/estimate_gas_price` endpoint)
+- Real account balances and transaction history (using `/accounts/{address}` endpoint)
+- Actual simulation results from Aptos SDK (using `aptos.transaction.simulate.simple()`)
+- Real ledger information (using `getLedgerInfo()` API)
+- Error when data is unavailable rather than showing mock data
+- Always attempt to fetch real data from Aptos APIs before falling back to errors
+
+### Implementation Guidelines:
+- Use Aptos TypeScript SDK methods for blockchain data
+- Fetch gas prices from `/estimate_gas_price` API endpoint
+- Get account data from `/accounts/{address}` API endpoint
+- Use `getLedgerInfo()` for block height and network state
+- Implement proper error handling when APIs are unavailable
+- Never hardcode values or use random number generation for display
+
+This is a MUST requirement that cannot be compromised.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
