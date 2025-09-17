@@ -145,6 +145,8 @@ export function SimulationResults() {
   function renderOverviewTab() {
     // Check if this is a batch transaction result
     const isBatchResult = result && (result as any).batchData;
+    // Check if this is a sponsored transaction result
+    const isSponsoredResult = result && (result as any).sponsoredData;
     
     return (
       <div className="space-y-4">
@@ -175,9 +177,65 @@ export function SimulationResults() {
           </div>
         )}
 
+        {/* Sponsored Summary (if sponsored result) */}
+        {isSponsoredResult && (
+          <div className="bg-card border border-border rounded p-4">
+            <h4 className="font-semibold mb-3">Sponsored Transaction Summary</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-lg font-bold text-green-600">
+                  {formatAPT((result as any).sponsoredData.senderSavings || 0)}
+                </div>
+                <div className="text-sm text-muted-foreground">Sender Savings</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-blue-600">
+                  {formatAPT((result as any).sponsoredData.sponsorCost || 0)}
+                </div>
+                <div className="text-sm text-muted-foreground">Sponsor Cost</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">
+                  {formatAPT((result as any).sponsoredData.sponsorBalance || 0)}
+                </div>
+                <div className="text-sm text-muted-foreground">Sponsor Balance</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold text-purple-600">
+                  {((result as any).sponsoredData.sponsorAddress || '').slice(0, 8)}...
+                </div>
+                <div className="text-sm text-muted-foreground">Sponsor</div>
+              </div>
+            </div>
+            
+            {/* Cost Comparison */}
+            {(result as any).sponsoredData.costComparison && (
+              <div className="mt-4 p-3 bg-muted/50 rounded">
+                <h5 className="text-sm font-medium mb-2">Cost Comparison</h5>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Without Sponsorship:</span>
+                    <span className="ml-2 font-medium">
+                      {formatAPT((result as any).sponsoredData.costComparison.withoutSponsorship)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">With Sponsorship:</span>
+                    <span className="ml-2 font-medium text-green-600">
+                      {formatAPT((result as any).sponsoredData.costComparison.withSponsorship)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Gas Information Summary */}
         <div className="bg-card border border-border rounded p-4">
-          <h4 className="font-semibold mb-3">{isBatchResult ? 'Total Gas Summary' : 'Gas Summary'}</h4>
+          <h4 className="font-semibold mb-3">
+            {isBatchResult ? 'Total Gas Summary' : isSponsoredResult ? 'Transaction Gas Summary' : 'Gas Summary'}
+          </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Gas Used</p>

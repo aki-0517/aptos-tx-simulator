@@ -11,13 +11,16 @@ import { UserCheck, DollarSign, Play, AlertCircle, ArrowRight, FileText } from '
 import { TransactionData, SponsoredTransactionData } from '@/types/aptos';
 import { sponsoredTransactionSimulator } from '@/lib/sponsored-simulator';
 import { useWallet } from '@/hooks/useWallet';
+import { useSimulationStore } from '@/stores/simulationStore';
 
 interface SponsoredTransactionBuilderProps {
   onResults?: (results: any) => void;
+  onSimulationRun?: () => void;
 }
 
-export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionBuilderProps) {
+export function SponsoredTransactionBuilder({ onResults, onSimulationRun }: SponsoredTransactionBuilderProps) {
   const { address } = useWallet();
+  const { setResult, setStatus, addToHistory } = useSimulationStore();
   const [sponsorAddress, setSponsorAddress] = useState('');
   const [transaction, setTransaction] = useState<any>({
     type: 'entry_function',
@@ -32,7 +35,6 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
   });
   const [sponsorValidation, setSponsorValidation] = useState<any>(null);
   const [isSimulating, setIsSimulating] = useState(false);
-  const [results, setResults] = useState<any>(null);
 
   // Update sender when wallet address changes
   useEffect(() => {
@@ -62,25 +64,80 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
     if (!sponsorAddress || !transaction.sender) return;
 
     setIsSimulating(true);
+    setStatus('simulating');
+    onSimulationRun?.();
     try {
       const sponsoredData = {
-        type: 'sponsored',
+        type: 'sponsored' as const,
         transaction,
-        sponsorAddress: sponsorAddress,
+        sponsor: sponsorAddress, // 正しいプロパティ名
         sender: transaction.sender,
         maxGasAmount: transaction.maxGasAmount,
         gasUnitPrice: transaction.gasUnitPrice,
       };
 
       const result = await sponsoredTransactionSimulator.simulateSponsored(sponsoredData);
-      setResults(result);
+      
+      // Transform sponsored result to match SimulationResult format
+      const simulationResult = {
+        ...result, // Spread the result as it extends SimulationResult
+        timestamp: Date.now(),
+        // Add sponsored-specific data
+        sponsoredData: {
+          type: 'sponsored',
+          sponsorAddress,
+          sponsorCost: result.sponsorCost || 0,
+          senderSavings: result.senderSavings || 0,
+          sponsorBalance: result.sponsorBalance || 0,
+          costComparison: result.costComparison || {
+            withSponsorship: 0,
+            withoutSponsorship: 0
+          }
+        }
+      };
+      
+      setResult(simulationResult);
+      setStatus('success');
+      addToHistory(simulationResult);
       onResults?.(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sponsored simulation failed:', error);
+      
+      // Create error result
+      const errorResult = {
+        success: false,
+        gasUsed: 0,
+        gasUnitPrice: transaction.gasUnitPrice || 100,
+        totalGasCost: 0,
+        totalGasCostAPT: 0,
+        vmStatus: 'FAILED',
+        executionTime: 0,
+        timestamp: Date.now(),
+        error: {
+          message: error.message || 'Sponsored simulation failed',
+          details: error.details || 'An unexpected error occurred during sponsored simulation',
+          code: error.code || 'SPONSORED_SIMULATION_ERROR'
+        },
+        sponsoredData: {
+          type: 'sponsored',
+          sponsorAddress,
+          sponsorCost: 0,
+          senderSavings: 0,
+          sponsorBalance: 0,
+          costComparison: {
+            withSponsorship: 0,
+            withoutSponsorship: 0
+          }
+        }
+      };
+      
+      setResult(errorResult);
+      setStatus('error');
+      onResults?.(errorResult);
     } finally {
       setIsSimulating(false);
     }
-  };
+  };;
 
   const updateTransaction = (updates: any) => {
     setTransaction((prev: any) => ({ ...prev, ...updates }));
@@ -291,168 +348,6 @@ export function SponsoredTransactionBuilder({ onResults }: SponsoredTransactionB
         </CardContent>
       </Card>
 
-      {/* Results */}
-      {results && <SponsoredResultsDisplay results={results} />}
     </div>
-  );
-}
-
-interface SponsoredResultsDisplayProps {
-  results: any;
-}
-
-function SponsoredResultsDisplay({ results }: SponsoredResultsDisplayProps) {
-  const formatAPT = (octas: number) => (octas / 100000000).toFixed(6);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Badge variant={results.success ? "default" : "destructive"}>
-            {results.success ? 'Success' : 'Failed'}
-          </Badge>
-          Sponsored Transaction Results
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Cost Analysis */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Sponsor Costs
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">Gas Used:</span>
-                <span>{results.gasUsed.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Total Cost:</span>
-                <span className="font-medium">{formatAPT(results.sponsorCost)} APT</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Sponsor Balance:</span>
-                <span>{formatAPT(results.sponsorBalance)} APT</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              <ArrowRight className="h-4 w-4" />
-              Sender Savings
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm">Without Sponsorship:</span>
-                <span>{formatAPT(results.costComparison.withoutSponsorship)} APT</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">With Sponsorship:</span>
-                <span className="text-green-600 font-medium">{formatAPT(results.costComparison.withSponsorship)} APT</span>
-              </div>
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-sm font-medium">Total Savings:</span>
-                <span className="text-green-600 font-bold">{formatAPT(results.senderSavings)} APT</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Transaction Details */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium">Transaction Details</h4>
-          <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Status:</span>
-              <span>{results.vmStatus}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Execution Time:</span>
-              <span>{results.executionTime}ms</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Gas Unit Price:</span>
-              <span>{results.gasUnitPrice}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {!results.success && results.error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <div className="font-medium">Sponsored Transaction Failed</div>
-                <div className="text-sm">
-                  <strong>Error:</strong> {results.error.message || 'Unknown error occurred'}
-                </div>
-                {results.error.details && (
-                  <div className="text-sm">
-                    <strong>Details:</strong> {results.error.details}
-                  </div>
-                )}
-                {results.error.suggestion && (
-                  <div className="text-sm">
-                    <strong>Suggestion:</strong> {results.error.suggestion}
-                  </div>
-                )}
-                {results.error.code && (
-                  <div className="text-sm">
-                    <strong>Error Code:</strong> {results.error.code}
-                  </div>
-                )}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Events and Changes */}
-        {results.success && (results.events?.length > 0 || results.changes?.length > 0) && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Transaction Effects</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {results.events?.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-xs font-medium text-muted-foreground">Events</h5>
-                  <div className="space-y-1">
-                    {results.events.slice(0, 3).map((event: any, index: number) => (
-                      <div key={index} className="text-xs p-2 bg-muted/30 rounded">
-                        {event.type || 'Event'} #{index + 1}
-                      </div>
-                    ))}
-                    {results.events.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
-                        ... and {results.events.length - 3} more events
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {results.changes?.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-xs font-medium text-muted-foreground">State Changes</h5>
-                  <div className="space-y-1">
-                    {results.changes.slice(0, 3).map((change: any, index: number) => (
-                      <div key={index} className="text-xs p-2 bg-muted/30 rounded">
-                        {change.type || 'Change'} at {change.address?.slice(0, 8)}...
-                      </div>
-                    ))}
-                    {results.changes.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
-                        ... and {results.changes.length - 3} more changes
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

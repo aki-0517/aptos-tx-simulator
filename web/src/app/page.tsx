@@ -287,7 +287,7 @@ export default function HomePage() {
                           </p>
                         </div>
                         <div className="vscode-card">
-                          <SponsoredTransactionBuilder onResults={setVmAnalysisResult} />
+                          <SponsoredTransactionBuilder onResults={setVmAnalysisResult} onSimulationRun={() => setActiveTab("results")} />
                         </div>
                       </div>
                     )}
