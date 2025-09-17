@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSimulation } from '@/hooks/useSimulation';
 import { formatAPT, formatGas, formatNumber } from '@/lib/utils';
@@ -18,34 +17,28 @@ export function SimulationResults() {
 
   if (isSimulating) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 animate-spin" />
-            Simulating...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center items-center p-8">
-            <div className="animate-pulse text-muted-foreground">
-              Running transaction simulation
-            </div>
+      <div className="bg-card border border-border rounded p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="h-5 w-5 animate-spin text-primary" />
+          <h3 className="text-lg font-semibold">Simulating...</h3>
+        </div>
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-pulse text-muted-foreground">
+            Running transaction simulation
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (!hasResult) {
     return (
-      <Card className="bg-muted/50">
-        <CardContent className="flex flex-col items-center justify-center p-8">
-          <div className="text-muted-foreground text-center">
-            <p className="text-lg mb-2">Ready to display results</p>
-            <p className="text-sm">Create a transaction in the left form and run the simulation</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-muted/30 border border-border rounded p-8">
+        <div className="text-muted-foreground text-center">
+          <p className="text-lg mb-2">Ready to display results</p>
+          <p className="text-sm">Create a transaction in the left form and run the simulation</p>
+        </div>
+      </div>
     );
   }
 
@@ -77,47 +70,44 @@ export function SimulationResults() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Status Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {isSuccess ? (
-              <>
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                Simulation Successful
-              </>
-            ) : (
-              <>
-                <XCircle className="h-5 w-5 text-red-500" />
-                Simulation Failed
-              </>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Execution time: {result?.executionTime.toFixed(2)}ms
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">VM Status</p>
-              <p className="text-lg font-mono">{result?.vmStatus}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Result</p>
-              <p className={`text-lg font-semibold ${isSuccess ? 'text-green-600' : 'text-red-600'}`}>
-                {isSuccess ? 'Success' : 'Failed'}
-              </p>
-            </div>
+    <div className="space-y-4">
+      {/* Status Section */}
+      <div className="bg-card border border-border rounded p-4">
+        <div className="flex items-center gap-2 mb-2">
+          {isSuccess ? (
+            <>
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="font-semibold">Simulation Successful</span>
+            </>
+          ) : (
+            <>
+              <XCircle className="h-5 w-5 text-red-500" />
+              <span className="font-semibold">Simulation Failed</span>
+            </>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Execution time: {result?.executionTime.toFixed(2)}ms
+        </p>
+        
+        <div className="grid grid-cols-2 gap-4 mt-4">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">VM Status</p>
+            <p className="text-sm vscode-font">{result?.vmStatus}</p>
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Result</p>
+            <p className={`text-sm font-semibold ${isSuccess ? 'text-green-400' : 'text-red-400'}`}>
+              {isSuccess ? 'Success' : 'Failed'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Tab Navigation */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex space-x-1 border-b">
+      <div className="bg-card border border-border rounded">
+        <div className="border-b border-border">
+          <div className="flex space-x-1 px-2 py-1">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               return (
@@ -125,12 +115,12 @@ export function SimulationResults() {
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key as any)}
                   disabled={!tab.available}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
                     activeTab === tab.key
-                      ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                      ? 'bg-accent text-accent-foreground'
                       : tab.available
-                      ? 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                      : 'text-gray-400 cursor-not-allowed'
+                      ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      : 'text-muted-foreground/50 cursor-not-allowed'
                   }`}
                 >
                   <IconComponent className="h-4 w-4" />
@@ -140,104 +130,98 @@ export function SimulationResults() {
               );
             })}
           </div>
-        </CardHeader>
-        <CardContent className="pt-4">
+        </div>
+        <div className="p-4">
           {/* Tab Content */}
           {activeTab === 'overview' && renderOverviewTab()}
           {activeTab === 'gas' && renderGasTab()}
           {activeTab === 'trace' && renderTraceTab()}
           {activeTab === 'state' && renderStateTab()}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 
   function renderOverviewTab() {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Gas Information Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Gas Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Gas Used</p>
-                <p className="text-2xl font-bold">{formatGas(result?.gasUsed || 0)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Gas Unit Price</p>
-                <p className="text-2xl font-bold">{formatGas(result?.gasUnitPrice || 0)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Gas Cost</p>
-                <p className="text-2xl font-bold">{formatNumber(result?.totalGasCost || 0)} octas</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">APT Cost</p>
-                <p className="text-2xl font-bold text-primary">{formatAPT(result?.totalGasCost || 0)}</p>
-              </div>
+        <div className="bg-card border border-border rounded p-4">
+          <h4 className="font-semibold mb-3">Gas Summary</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Gas Used</p>
+              <p className="text-lg font-bold vscode-font">{formatGas(result?.gasUsed || 0)}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Gas Unit Price</p>
+              <p className="text-lg font-bold vscode-font">{formatGas(result?.gasUnitPrice || 0)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Total Gas Cost</p>
+              <p className="text-lg font-bold vscode-font">{formatNumber(result?.totalGasCost || 0)} octas</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">APT Cost</p>
+              <p className="text-lg font-bold text-primary vscode-font">{formatAPT(result?.totalGasCost || 0)}</p>
+            </div>
+          </div>
+        </div>
 
         {/* Error Details */}
         {result?.error && (
-          <Card className="border-destructive">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Error Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium">Error Code</p>
-                  <p className="font-mono text-sm bg-muted p-2 rounded">{result.error.code}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Message</p>
-                  <p className="text-sm bg-muted p-2 rounded">{result.error.message}</p>
-                </div>
-                {result.error.suggestion && (
-                  <div>
-                    <p className="text-sm font-medium">Suggestion</p>
-                    <p className="text-sm text-muted-foreground bg-blue-50 p-2 rounded">
-                      {result.error.suggestion}
-                    </p>
-                  </div>
-                )}
+          <div className="bg-destructive/10 border border-destructive/20 rounded p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <h4 className="font-semibold text-destructive">Error Details</h4>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Error Code</p>
+                <p className="vscode-font text-sm bg-muted p-2 rounded">{result.error.code}</p>
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Message</p>
+                <p className="text-sm bg-muted p-2 rounded">{result.error.message}</p>
+              </div>
+              {result.error.suggestion && (
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Suggestion</p>
+                  <p className="text-sm text-muted-foreground bg-primary/10 p-2 rounded">
+                    {result.error.suggestion}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Quick Actions */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const data = JSON.stringify(result, null, 2);
-                  navigator.clipboard.writeText(data);
-                }}
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Results
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.open(getExplorerUrl(), '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View on Explorer
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="bg-card border border-border rounded p-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const data = JSON.stringify(result, null, 2);
+                navigator.clipboard.writeText(data);
+              }}
+              className="text-xs"
+            >
+              <Copy className="h-3 w-3 mr-2" />
+              Copy Results
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(getExplorerUrl(), '_blank')}
+              className="text-xs"
+            >
+              <ExternalLink className="h-3 w-3 mr-2" />
+              View on Explorer
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -245,7 +229,7 @@ export function SimulationResults() {
   function renderGasTab() {
     if (!result?.gasBreakdown) {
       return (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           Detailed gas analysis not available for this transaction
         </div>
       );
@@ -262,7 +246,7 @@ export function SimulationResults() {
   function renderTraceTab() {
     if (!result?.trace) {
       return (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-muted-foreground">
           Execution trace not available for this transaction
         </div>
       );

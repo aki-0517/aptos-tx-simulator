@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TransactionBuilder } from '@/components/simulation/TransactionBuilder';
 import { SimulationResults } from '@/components/simulation/SimulationResults';
 import { ClientOnly } from '@/components/common/ClientOnly';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useSimulation } from '@/hooks/useSimulation';
 import { BatchTransactionBuilder } from '@/components/simulation/BatchTransactionBuilder';
@@ -28,6 +26,13 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("create");
   const [transactionMode, setTransactionMode] = useState("basic");
   const [vmAnalysisResult, setVmAnalysisResult] = useState<any>(null);
+
+  // トランザクションモードが変更された際に、Simulation Resultsタブにいる場合は自動でTransaction Builderタブに戻る
+  useEffect(() => {
+    if (activeTab === 'results') {
+      setActiveTab('create');
+    }
+  }, [transactionMode]);
 
   const transactionModes = [
     {
@@ -75,45 +80,72 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Hero Section */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold mb-4">
-          Aptos Transaction Simulator
-        </h1>
-        <p className="text-xl text-muted-foreground mb-6">
-          Simulate Aptos blockchain transactions before execution to preview<br />
-          gas usage and detect potential errors in advance.
-        </p>
+    <div className="flex h-full bg-background">
+      {/* Activity Bar */}
+      <div className="activity-bar w-12 flex flex-col items-center py-2">
+        <div className="w-8 h-8 bg-primary rounded flex items-center justify-center mb-4">
+          <span className="text-primary-foreground font-bold text-xs">A</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'basic' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('basic')}>
+            <Code className="h-4 w-4" />
+          </div>
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'batch' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('batch')}>
+            <Layers className="h-4 w-4" />
+          </div>
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'sponsored' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('sponsored')}>
+            <UserCheck className="h-4 w-4" />
+          </div>
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'state-fork' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('state-fork')}>
+            <GitBranch className="h-4 w-4" />
+          </div>
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'vm-visualization' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('vm-visualization')}>
+            <Activity className="h-4 w-4" />
+          </div>
+          <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'gas-optimizer' ? 'bg-accent' : 'hover:bg-muted'}`}
+               onClick={() => setTransactionMode('gas-optimizer')}>
+            <Zap className="h-4 w-4" />
+          </div>
+        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Left Sidebar - Transaction Mode */}
-        <div className="xl:col-span-3 space-y-6">
-          {/* Transaction Mode Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Transaction Mode</CardTitle>
-              <CardDescription>
-                Select the type of transaction to simulate
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {transactionModes.map((mode) => {
-                const Icon = mode.icon;
-                return (
-                  <Button
-                    key={mode.id}
-                    variant={transactionMode === mode.id ? "default" : "ghost"}
-                    className="w-full justify-start h-auto p-3"
-                    onClick={() => setTransactionMode(mode.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                      <div className="text-left">
+      {/* Main Editor Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Sidebar */}
+        <div className="flex h-full">
+          <div className="editor-sidebar w-80 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="border-b border-border px-4 py-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span>EXPLORER</span>
+              </div>
+            </div>
+            
+            {/* Transaction Mode Selection */}
+            <div className="flex-1">
+              <div className="px-4 py-2 text-xs text-muted-foreground uppercase tracking-wide font-medium border-b border-border">
+                TRANSACTION MODES
+              </div>
+              <div className="px-2">
+                {transactionModes.map((mode) => {
+                  const Icon = mode.icon;
+                  return (
+                    <div
+                      key={mode.id}
+                      className={`flex items-center gap-2 px-2 py-1 text-sm cursor-pointer hover:bg-muted/50 rounded ${
+                        transactionMode === mode.id ? 'bg-accent text-accent-foreground' : ''
+                      }`}
+                      onClick={() => setTransactionMode(mode.id)}
+                    >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{mode.name}</span>
+                          <span className="font-medium truncate">{mode.name}</span>
                           <Badge 
                             variant={mode.status === 'stable' ? 'default' : 'secondary'} 
                             className="text-xs"
@@ -121,176 +153,218 @@ export default function HomePage() {
                             {mode.status}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground truncate">
                           {mode.description}
                         </p>
                       </div>
                     </div>
-                  </Button>
-                );
-              })}
-            </CardContent>
-          </Card>
-          
-          {/* Simulation History */}
-          {history.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">History</CardTitle>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Simulation History */}
+            {history.length > 0 && (
+              <div className="border-t border-border">
+                <div className="px-4 py-2 text-xs text-muted-foreground uppercase tracking-wide font-medium flex items-center justify-between">
+                  <span>HISTORY</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearHistory}
+                    className="h-6 px-2 text-xs"
                   >
                     Clear
                   </Button>
                 </div>
-                <CardDescription>
-                  Recent simulation results
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="px-2 max-h-48 overflow-y-auto">
                   {history.slice(0, 5).map((result, index) => (
                     <div
                       key={index}
-                      className="p-2 bg-muted/50 rounded text-sm"
+                      className="flex items-center justify-between px-2 py-1 text-xs hover:bg-muted/50 rounded"
                     >
-                      <div className="flex items-center justify-between">
-                        <span className={`font-medium ${result.success ? 'text-green-600' : 'text-red-600'}`}>
-                          {result.success ? 'Success' : 'Failed'}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {result.gasUsed} gas
-                        </span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                        <span className="vscode-font">{result.vmStatus}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {result.vmStatus}
-                      </p>
+                      <span className="text-muted-foreground">{result.gasUsed}</span>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            )}
+          </div>
+
+          {/* Main Editor Area */}
+          <div className="flex-1 flex flex-col">
+            {/* Tab Bar */}
+            <div className="flex border-b border-border">
+              <div
+                className={`px-4 py-2 text-sm cursor-pointer border-r border-border ${
+                  activeTab === 'create' ? 'tab-active' : 'tab-inactive'
+                }`}
+                onClick={() => setActiveTab('create')}
+              >
+                <div className="flex items-center gap-2">
+                  <Code className="h-4 w-4" />
+                  <span>Transaction Builder</span>
+                </div>
+              </div>
+              <div
+                className={`px-4 py-2 text-sm cursor-pointer border-r border-border ${
+                  activeTab === 'results' ? 'tab-active' : 'tab-inactive'
+                }`}
+                onClick={() => setActiveTab('results')}
+              >
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  <span>Simulation Results</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Editor Content */}
+            <div className="flex-1 editor-panel overflow-auto">
+              {activeTab === 'create' && (
+                <div className="p-6">
+                  <ClientOnly fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+                    {transactionMode === 'basic' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Code className="h-5 w-5" />
+                            Basic Transaction Builder
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Create and simulate simple transactions on the Aptos blockchain
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <TransactionBuilder onSimulationRun={() => setActiveTab("results")} />
+                        </div>
+                      </div>
+                    )}
+
+                    {transactionMode === 'batch' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Layers className="h-5 w-5" />
+                            Batch Transaction Builder
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Create and simulate multiple transactions with automatic dependency analysis
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <BatchTransactionBuilder onResults={setVmAnalysisResult} />
+                        </div>
+                      </div>
+                    )}
+
+                    {transactionMode === 'sponsored' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <UserCheck className="h-5 w-5" />
+                            Sponsored Transaction Builder
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Create transactions where a sponsor pays the gas fees
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <SponsoredTransactionBuilder onResults={setVmAnalysisResult} />
+                        </div>
+                      </div>
+                    )}
+
+                    {transactionMode === 'state-fork' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <GitBranch className="h-5 w-5" />
+                            State Fork Management
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Create and manage blockchain state forks for testing
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <StateForkManager />
+                        </div>
+                      </div>
+                    )}
+
+                    {transactionMode === 'vm-visualization' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            VM Execution Visualization
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            Detailed Move VM instruction-level analysis
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <VMExecutionVisualization 
+                            simulationResult={getLatestResult() || vmAnalysisResult}
+                            onAnalysisComplete={setVmAnalysisResult}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {transactionMode === 'gas-optimizer' && (
+                      <div className="space-y-4">
+                        <div className="border-b border-border pb-2">
+                          <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <Zap className="h-5 w-5" />
+                            Gas Optimizer
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            AI-powered gas optimization with efficiency recommendations
+                          </p>
+                        </div>
+                        <div className="vscode-card">
+                          <GasOptimizer
+                            transactionData={transactionData}
+                            simulationResult={getLatestResult() || vmAnalysisResult}
+                            onOptimize={(optimizations) => {
+                              console.log('Applying optimizations:', optimizations);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </ClientOnly>
+                </div>
+              )}
+              
+              {activeTab === 'results' && (
+                <div className="p-6">
+                  <ClientOnly fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+                    <SimulationResults />
+                  </ClientOnly>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-
-        {/* Main Content Tabs */}
-        <div className="xl:col-span-9">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="create">Create Transaction</TabsTrigger>
-              <TabsTrigger value="results">Simulation Results</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="create">
-              <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
-                {transactionMode === 'basic' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="Basic Transaction Builder"
-                      description="Create and simulate simple transactions on the Aptos blockchain"
-                      icon={Code}
-                    />
-                    <TransactionBuilder onSimulationRun={() => setActiveTab("results")} />
-                  </div>
-                )}
-
-                {transactionMode === 'batch' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="Batch Transaction Builder"
-                      description="Create and simulate multiple transactions with automatic dependency analysis and optimization"
-                      icon={Layers}
-                    />
-                    <BatchTransactionBuilder onResults={setVmAnalysisResult} />
-                  </div>
-                )}
-
-                {transactionMode === 'sponsored' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="Sponsored Transaction Builder"
-                      description="Create transactions where a sponsor pays the gas fees, enabling gasless user experiences"
-                      icon={UserCheck}
-                    />
-                    <SponsoredTransactionBuilder onResults={setVmAnalysisResult} />
-                  </div>
-                )}
-
-                {transactionMode === 'state-fork' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="State Fork Management"
-                      description="Create, modify, and manage blockchain state forks for 'what-if' scenario testing"
-                      icon={GitBranch}
-                    />
-                    <StateForkManager />
-                  </div>
-                )}
-
-                {transactionMode === 'vm-visualization' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="VM Execution Visualization"
-                      description="Detailed Move VM instruction-level analysis with gas usage patterns and execution traces"
-                      icon={Activity}
-                    />
-                    <VMExecutionVisualization 
-                      simulationResult={getLatestResult() || vmAnalysisResult}
-                      onAnalysisComplete={setVmAnalysisResult}
-                    />
-                  </div>
-                )}
-
-                {transactionMode === 'gas-optimizer' && (
-                  <div className="space-y-6">
-                    <FeatureHeader
-                      title="Gas Optimizer"
-                      description="AI-powered analysis to identify and apply gas optimization opportunities"
-                      icon={Zap}
-                    />
-                    <GasOptimizer
-                      transactionData={transactionData}
-                      simulationResult={getLatestResult() || vmAnalysisResult}
-                      onOptimize={(optimizations) => {
-                        console.log('Applying optimizations:', optimizations);
-                      }}
-                    />
-                  </div>
-                )}
-              </ClientOnly>
-            </TabsContent>
-            
-            <TabsContent value="results">
-              <ClientOnly fallback={<Card><CardContent className="p-8 text-center">Loading...</CardContent></Card>}>
-                <SimulationResults />
-              </ClientOnly>
-            </TabsContent>
-          </Tabs>
+        
+        {/* Status Bar */}
+        <div className="status-bar h-6 flex items-center justify-between px-4 text-xs">
+          <div className="flex items-center gap-4">
+            <span>Aptos Transaction Simulator</span>
+            <span>Ready</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span>TypeScript</span>
+            <span>v1.0-preview</span>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-interface FeatureHeaderProps {
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-}
-
-function FeatureHeader({ title, description, icon: Icon }: FeatureHeaderProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon className="h-5 w-5" />
-          {title}
-        </CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-    </Card>
   );
 }

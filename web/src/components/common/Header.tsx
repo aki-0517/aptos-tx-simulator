@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useWallet } from '@/hooks/useWallet';
 import { useAptosClient } from '@/hooks/useAptosClient';
-import { formatAddress, formatAPT } from '@/lib/utils';
+import { formatAddress } from '@/lib/utils';
 import { Wallet, Github, ExternalLink, LogOut } from 'lucide-react';
 import {
   Select,
@@ -20,90 +20,63 @@ export function Header() {
   const { availableNetworks, switchNetwork, getAccountExplorerUrl } = useAptosClient();
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 flex items-center justify-between h-16">
+    <header className="border-b border-border bg-background h-12 flex items-center justify-between px-4">
+      <div className="flex items-center justify-between w-full">
         {/* Logo & Title */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold">A</span>
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-xs">A</span>
             </div>
-            <div>
-              <h1 className="font-bold text-lg">Aptos Simulator</h1>
-              <p className="text-xs text-muted-foreground">MVP</p>
-            </div>
+            <span className="font-medium text-sm">Aptos Transaction Simulator</span>
           </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          <Link 
-            href="/" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Simulator
-          </Link>
-          <Link 
-            href="/docs" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Documentation
-          </Link>
-          <a
-            href="https://github.com/your-repo/aptos-tx-simulator"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-          >
-            <Github className="h-4 w-4" />
-            GitHub
-          </a>
+        {/* Menu Items */}
+        <nav className="hidden md:flex items-center space-x-4">
+          <span className="text-xs text-muted-foreground">File</span>
+          <span className="text-xs text-muted-foreground">Edit</span>
+          <span className="text-xs text-muted-foreground">View</span>
+          <span className="text-xs text-muted-foreground">Help</span>
         </nav>
 
-        {/* Wallet Connection */}
-        <div className="flex items-center space-x-2">
+        {/* Right side - Wallet Info */}
+        <div className="flex items-center space-x-3">
           {isConnected && wallet ? (
             <div className="flex items-center space-x-2">
-              {/* Network Selector */}
               <Select value={currentNetwork} onValueChange={switchNetwork}>
-                <SelectTrigger className="w-[120px] hidden sm:flex">
+                <SelectTrigger className="w-[100px] h-7 text-xs bg-input border-border">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-popover border-border">
                   {availableNetworks.filter(net => net !== 'mainnet').map((network) => (
-                    <SelectItem key={network} value={network}>
+                    <SelectItem key={network} value={network} className="text-xs">
                       {network === 'devnet' ? 'Devnet' : network === 'testnet' ? 'Testnet' : network}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              {/* Address & Balance */}
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium">
-                  {formatAddress(wallet.account.address)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {wallet?.balance !== undefined ? formatAPT(wallet.balance * 100000000) : 'Loading...'}
-                </p>
-              </div>
-
-              {/* Disconnect Button */}
+              
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                {formatAddress(wallet.account.address)}
+              </span>
+              
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={disconnect}
+                className="h-7 px-2 text-xs"
               >
-                <LogOut className="h-4 w-4 mr-1" />
-                Disconnect
+                <LogOut className="h-3 w-3" />
               </Button>
             </div>
           ) : (
             <Button
               onClick={connect}
               size="sm"
+              className="h-7 px-3 text-xs"
             >
-              <Wallet className="h-4 w-4 mr-2" />
+              <Wallet className="h-3 w-3 mr-1" />
               Connect
             </Button>
           )}
