@@ -18,7 +18,9 @@ import {
   Code,
   Layers,
   UserCheck,
-  GitBranch
+  GitBranch,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -26,6 +28,7 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("create");
   const [transactionMode, setTransactionMode] = useState("basic");
   const [vmAnalysisResult, setVmAnalysisResult] = useState<any>(null);
+  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
 
   // トランザクションモードが変更された際に、Simulation Resultsタブにいる場合は自動でTransaction Builderタブに戻る
   useEffect(() => {
@@ -83,9 +86,6 @@ export default function HomePage() {
     <div className="flex h-full bg-background">
       {/* Activity Bar */}
       <div className="activity-bar w-12 flex flex-col items-center py-2">
-        <div className="w-8 h-8 bg-primary rounded flex items-center justify-center mb-4">
-          <span className="text-primary-foreground font-bold text-xs">A</span>
-        </div>
         <div className="flex flex-col gap-2">
           <div className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer ${transactionMode === 'basic' ? 'bg-accent' : 'hover:bg-muted'}`}
                onClick={() => setTransactionMode('basic')}>
@@ -112,13 +112,25 @@ export default function HomePage() {
             <Zap className="h-4 w-4" />
           </div>
         </div>
+        
+        {/* Explorer Toggle Button */}
+        <div className="mt-4">
+          <button
+            onClick={() => setIsExplorerOpen(!isExplorerOpen)}
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors"
+            title={isExplorerOpen ? 'Hide Explorer' : 'Show Explorer'}
+          >
+            {isExplorerOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       {/* Main Editor Area */}
       <div className="flex-1 flex flex-col">
         {/* Sidebar */}
         <div className="flex h-full">
-          <div className="editor-sidebar w-80 flex flex-col">
+          {isExplorerOpen && (
+            <div className="editor-sidebar w-80 flex flex-col">
             {/* Sidebar Header */}
             <div className="border-b border-border px-4 py-2">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -193,7 +205,8 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Main Editor Area */}
           <div className="flex-1 flex flex-col">
