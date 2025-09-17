@@ -23,7 +23,7 @@ export interface TransactionInput {
   sequenceNumber?: number;
 }
 
-export interface FunctionCall {
+export interface EntryFunctionCall {
   function: string;
   functionArguments: any[];
   typeArguments?: string[];
@@ -75,21 +75,7 @@ export interface MultiSigTransactionData {
 }
 
 // Enhanced simulation result for advanced features
-export interface BatchSimulationResult extends SimulationResult {
-  individualResults: SimulationResult[];
-  dependencies: TransactionDependency[];
-  parallelExecutionSavings?: number;
-}
 
-export interface SponsoredSimulationResult extends SimulationResult {
-  sponsorCost: number;
-  senderSavings: number;
-  sponsorBalance: number;
-  costComparison: {
-    withSponsorship: number;
-    withoutSponsorship: number;
-  };
-}
 
 export interface MultiSigSimulationResult extends SimulationResult {
   signaturesRequired: number;
@@ -133,12 +119,6 @@ export interface StateModification {
   timestamp: Date;
 }
 
-export interface ScriptTransactionData {
-  type: 'script';
-  code: string; // Move bytecode (hex)
-  typeArgs: string[];
-  functionArgs: any[];
-}
 
 export interface BatchTransactionData {
   type: 'batch';
@@ -153,28 +133,6 @@ export interface SponsoredTransactionData {
   sender: string;
 }
 
-export interface BatchSimulationResult {
-  results: SimulationResult[];
-  totalGasUsed: number;
-  totalCost: number;
-  dependencyGraph?: DependencyNode[];
-}
-
-export interface DependencyNode {
-  transactionIndex: number;
-  dependencies: number[];
-  stateChanges: string[];
-}
-
-export interface SponsoredSimulationResult {
-  normal: SimulationResult;
-  sponsored: SimulationResult;
-  gasSavings: number;
-  costComparison: {
-    senderCost: number;
-    sponsorCost: number;
-  };
-}
 
 export interface MoveFunction {
   name: string;

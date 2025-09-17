@@ -32,10 +32,12 @@ export class VMTraceAnalyzer {
           instructions.push({
             opcode: event.instruction?.opcode || 'unknown',
             operands: event.instruction?.operands || [],
-            stackBefore: event.stack_before || [],
-            stackAfter: event.stack_after || [],
-            gasConsumed: parseInt(event.gas_consumed || '0'),
-            timestamp: event.timestamp || index,
+            stack_before: (event.stack_before || []).map((item: any) => ({ type: typeof item, value: item })),
+            stack_after: (event.stack_after || []).map((item: any) => ({ type: typeof item, value: item })),
+            gas_consumed: parseInt(event.gas_consumed || '0'),
+            execution_time_ns: (event.execution_time_ns || index * 1000),
+            instruction_index: index,
+            call_depth: event.call_depth || 0,
           });
         }
       });
@@ -55,9 +57,10 @@ export class VMTraceAnalyzer {
     if (traceData.gas_events) {
       traceData.gas_events.forEach((event: any, index: number) => {
         gasUsage.push({
-          step: index,
-          gasUsed: parseInt(event.gas_used || '0'),
-          category: this.categorizeGasUsage(event.event_type || 'execution'),
+          instruction_index: index,
+          gas_consumed: parseInt(event.gas_used || '0'),
+          cumulative_gas: parseInt(event.cumulative_gas || '0'),
+          gas_remaining: parseInt(event.gas_remaining || '0'),
         });
       });
     }
@@ -80,19 +83,25 @@ export class VMTraceAnalyzer {
       traceData.io_events.forEach((event: any) => {
         resourceAccesses.push({
           address: event.address || '',
-          resourceType: event.resource_type || '',
+          resource_type: event.resource_type || '',
           operation: this.mapOperationType(event.operation || 'read'),
-          gasUsed: parseInt(event.gas_used || '0'),
+          gas_cost: parseInt(event.gas_used || '0'),
+          instruction_index: index,
         });
       });
     }
 
     return {
       instructions,
-      stackStates,
-      gasUsage,
-      moduleLoads,
-      resourceAccesses,
+      function_calls: [],
+      resource_accesses: resourceAccesses,
+      gas_usage_steps: gasUsage,
+      execution_summary: {
+        total_instructions: instructions.length,
+        total_function_calls: 0,
+        max_call_depth: Math.max(...instructions.map(i => i.call_depth), 0),
+        total_execution_time_ns: instructions.reduce((sum, i) => sum + i.execution_time_ns, 0),
+      },
     };
   }
 
@@ -148,7 +157,7 @@ export class VMTraceAnalyzer {
     trace.instructions.forEach(instruction => {
       const existing = gasHotspots.get(instruction.opcode) || { gasUsed: 0, count: 0 };
       gasHotspots.set(instruction.opcode, {
-        gasUsed: existing.gasUsed + instruction.gasConsumed,
+        gasUsed: existing.gasUsed + instruction.gas_consumed,
         count: existing.count + 1,
       });
     });
@@ -158,18 +167,18 @@ export class VMTraceAnalyzer {
       .sort((a, b) => b.gasUsed - a.gasUsed);
 
     // Stack depth analysis
-    const stackDepths = trace.stackStates.map(state => state.values.length);
+    const stackDepths = trace.instructions.map(inst => inst.stack_after.length);
     const maxDepth = Math.max(...stackDepths, 0);
     const avgDepth = stackDepths.reduce((sum, depth) => sum + depth, 0) / Math.max(stackDepths.length, 1);
 
     // Module usage analysis
     const moduleUsage = new Map<string, { loadCount: number; gasUsed: number }>();
-    trace.moduleLoads.forEach(load => {
-      const key = `${load.address}::${load.moduleName}`;
+    trace.function_calls.forEach(call => {
+      const key = `${call.module_id}::${call.function_name}`;
       const existing = moduleUsage.get(key) || { loadCount: 0, gasUsed: 0 };
       moduleUsage.set(key, {
         loadCount: existing.loadCount + 1,
-        gasUsed: existing.gasUsed + load.gasUsed,
+        gasUsed: existing.gasUsed + call.gas_consumed,
       });
     });
 
@@ -204,40 +213,40 @@ export class VMTraceAnalyzer {
     // Add instruction events
     trace.instructions.forEach(instruction => {
       timeline.push({
-        timestamp: instruction.timestamp,
+        timestamp: instruction.execution_time_ns / 1000000, // Convert to ms
         event: 'instruction',
         details: {
           opcode: instruction.opcode,
           operands: instruction.operands,
         },
-        gasUsed: instruction.gasConsumed,
+        gasUsed: instruction.gas_consumed,
       });
     });
 
     // Add module load events
-    trace.moduleLoads.forEach((load, index) => {
+    trace.function_calls.forEach((call, index) => {
       timeline.push({
         timestamp: index, // Module loads don't have timestamps, use index
         event: 'module_load',
         details: {
-          address: load.address,
-          moduleName: load.moduleName,
+          module_id: call.module_id,
+          function_name: call.function_name,
         },
-        gasUsed: load.gasUsed,
+        gasUsed: call.gas_consumed,
       });
     });
 
     // Add resource access events
-    trace.resourceAccesses.forEach((access, index) => {
+    trace.resource_accesses.forEach((access, index) => {
       timeline.push({
         timestamp: index,
         event: 'resource_access',
         details: {
           address: access.address,
-          resourceType: access.resourceType,
+          resource_type: access.resource_type,
           operation: access.operation,
         },
-        gasUsed: access.gasUsed,
+        gasUsed: access.gas_cost,
       });
     });
 

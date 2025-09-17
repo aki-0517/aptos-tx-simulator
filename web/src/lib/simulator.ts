@@ -3,6 +3,8 @@ import { aptosClient } from './aptos-client';
 import { SimulationResult, SimulationError, GasEstimation, TransactionData, ScriptTransactionData, BatchTransactionData, SponsoredTransactionData, BatchSimulationResult, SponsoredSimulationResult, VMExecutionTrace, DetailedGasBreakdown, StateChangeAnalysis, SimulationConfig } from '@/types';
 import { vmTraceAnalyzer } from './vm-trace';
 import { gasAnalyzer } from './gas-analyzer';
+import { gasBreakdownGenerator } from './gas-breakdown-generator';
+import { traceSimulator } from './trace-simulator';
 
 export class TransactionSimulator {
   constructor() {}
@@ -66,7 +68,7 @@ export class TransactionSimulator {
       // Process the simulation result
       if (simulationResult && simulationResult.length > 0) {
         const result = simulationResult[0];
-        return await this.processSimulationResultWithConfig(result, transactionData.gasUnitPrice, executionTime, config);
+        return await this.processSimulationResult(result, transactionData.gasUnitPrice, executionTime, transactionData);
       } else {
         throw new Error('No simulation result returned');
       }
@@ -227,7 +229,7 @@ export class TransactionSimulator {
       const executionTime = performance.now() - startTime;
       
       if (simulationResult && simulationResult.length > 0) {
-        return this.processSimulationResult(simulationResult[0], scriptData.gasUnitPrice, executionTime);
+        return await this.processSimulationResult(simulationResult[0], scriptData.gasUnitPrice, executionTime, scriptData);
       } else {
         throw new Error('No simulation result returned');
       }
@@ -352,21 +354,9 @@ export class TransactionSimulator {
   }
 
   // Enhanced method to process simulation results with config
-  private async processSimulationResultWithConfig(result: any, gasUnitPrice: number | undefined, executionTime: number, config?: SimulationConfig): Promise<SimulationResult> {
-    const basicResult = this.processSimulationResult(result, gasUnitPrice, executionTime);
+  private async processSimulationResultWithConfig(result: any, gasUnitPrice: number | undefined, executionTime: number, config?: SimulationConfig, transactionData?: TransactionData): Promise<SimulationResult> {
+    const basicResult = await this.processSimulationResult(result, gasUnitPrice, executionTime, transactionData);
     
-    // Add trace analysis if enabled
-    if (config?.enableTrace && result.trace) {
-      const trace = await vmTraceAnalyzer.getExecutionTrace(result);
-      basicResult.trace = trace;
-    }
-
-    // Add detailed gas analysis if enabled
-    if (config?.enableDetailedGasAnalysis) {
-      const gasBreakdown = await this.analyzeDetailedGas(result);
-      basicResult.gasBreakdown = gasBreakdown;
-    }
-
     // Add state analysis
     const stateAnalysis = await this.analyzeStateChanges(result);
     basicResult.stateAnalysis = stateAnalysis;
@@ -403,14 +393,14 @@ export class TransactionSimulator {
   }
 
   // Helper method to process simulation results
-  private processSimulationResult(result: any, gasUnitPrice: number | undefined, executionTime: number): SimulationResult {
+  private async processSimulationResult(result: any, gasUnitPrice: number | undefined, executionTime: number, transactionData?: TransactionData): Promise<SimulationResult> {
     const gasUsed = parseInt(result.gas_used || '0');
     const effectiveGasPrice = gasUnitPrice || 100; // fallback gas price
     const totalGasCost = gasUsed * effectiveGasPrice;
     const totalGasCostAPT = totalGasCost / 100000000;
     const success = result.success;
     
-    return {
+    const simulationResult: SimulationResult = {
       success,
       gasUsed,
       gasUnitPrice: effectiveGasPrice,
@@ -421,14 +411,34 @@ export class TransactionSimulator {
         address: change.address || '',
         data: change.data || {},
         type: change.type || 'write_resource',
+        state_key_hash: change.state_key_hash || '',
       })),
       events: (result.events || []).map((event: any) => ({
         type: event.type || '',
         data: event.data || {},
+        guid: event.guid || {},
+        sequence_number: event.sequence_number || '0',
       })),
       error: success ? undefined : this.parseVmError(result.vm_status || ''),
       executionTime,
     };
+
+    try {
+      // Generate gas breakdown
+      const gasBreakdown = gasBreakdownGenerator.generateFromSimulation(simulationResult);
+      simulationResult.gasBreakdown = gasBreakdown;
+
+      // Generate execution trace if transaction data is available
+      if (transactionData) {
+        const trace = await traceSimulator.simulateWithTrace(transactionData, simulationResult);
+        simulationResult.trace = trace;
+      }
+    } catch (error) {
+      console.warn('Failed to generate extended analysis:', error);
+      // Continue without extended analysis
+    }
+    
+    return simulationResult;
   }
 
   // Helper method to create error results
